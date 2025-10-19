@@ -8,21 +8,15 @@ class LibrarianDashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: const CustomAppBar(),
+      appBar: const CustomAppBar(
+        userRole: 'librarian',
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Librarian Dashboard",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-            const SizedBox(height: 20),
+            // Librarian Dashboard heading removed per request
             
             // Stats Grid
             GridView.count(
@@ -60,7 +54,7 @@ class LibrarianDashboardPage extends StatelessWidget {
               ],
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             // Pending Tasks
             Container(
@@ -90,7 +84,7 @@ class LibrarianDashboardPage extends StatelessWidget {
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             // Quick Actions
             const Text(
@@ -166,6 +160,145 @@ class LibrarianDashboardPage extends StatelessWidget {
                     Navigator.pushNamed(context, '/contact-librarian');
                   },
                 ),
+                _buildActionButton(
+                  context,
+                  "Upload PDF",
+                  Icons.upload_file,
+                  () {
+                    Navigator.pushNamed(context, '/upload-pdf');
+                  },
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Recent Activity Feed
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2D35),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Recent Activity Feed",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildActivityItem(
+                    "2 min ago",
+                    'User Sarah B. borrowed "The Complete Gui..."',
+                    Icons.menu_book,
+                    Colors.blue,
+                  ),
+                  _buildActivityItem(
+                    "10 min ago",
+                    'User John D. returned "Database Manage..."',
+                    Icons.check_circle,
+                    Colors.green,
+                  ),
+                  _buildActivityItem(
+                    "30 min ago",
+                    "User Alex L. paid TK 20.00 fine",
+                    Icons.payment,
+                    Colors.red,
+                  ),
+                  _buildActivityItem(
+                    "1 hour ago",
+                    'User Maria G. borrowed "System Engineer..."',
+                    Icons.menu_book,
+                    Colors.blue,
+                  ),
+                  _buildActivityItem(
+                    "2 hours ago",
+                    'User David P. requested for addition "Sapi..."',
+                    Icons.add_circle,
+                    Colors.green,
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 20),
+            
+            // Borrow Restrictions removed per request
+            
+            const SizedBox(height: 24),
+            
+            // Quick Actions
+            const Text(
+              "Quick Actions",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GridView.count(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              childAspectRatio: 1.5,
+              children: [
+                _buildActionButton(
+                  context,
+                  "Manage Inventory",
+                  Icons.inventory_2,
+                  () {
+                    Navigator.pushNamed(context, '/librarian-inventory');
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  "Search books",
+                  Icons.search,
+                  () {
+                    Navigator.pushNamed(context, '/library');
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  "Transaction History",
+                  Icons.history,
+                  () {
+                    Navigator.pushNamed(
+                      context,
+                      '/transaction-history',
+                      arguments: {'userRole': 'librarian'},
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  "Generate Report",
+                  Icons.assessment,
+                  () {
+                    Navigator.pushNamed(
+                      context,
+                      '/generate-reports',
+                      arguments: {'userRole': 'librarian'},
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  "Request New Book",
+                  Icons.book,
+                  () {
+                    Navigator.pushNamed(context, '/request-book-details');
+                  },
+                ),
+                // Contact Support quick action removed per request
                 _buildActionButton(
                   context,
                   "Upload PDF",
@@ -337,6 +470,8 @@ class LibrarianDashboardPage extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
@@ -389,6 +524,8 @@ class LibrarianDashboardPage extends StatelessWidget {
                     Expanded(
                       child: Text(
                         description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 14,
@@ -421,21 +558,29 @@ class LibrarianDashboardPage extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.dashboard, "Dashboard", true, () {}),
-              _buildNavItem(Icons.inventory_2, "Inventory", false, () {
-                Navigator.pushReplacementNamed(context, '/librarian-inventory');
-              }),
-              _buildNavItem(Icons.assessment, "Reports", false, () {
-                Navigator.pushReplacementNamed(context, '/librarian-reports');
-              }),
-              _buildNavItem(Icons.request_page, "Requests", false, () {
-                Navigator.pushReplacementNamed(context, '/librarian-requests');
-              }),
-              _buildNavItem(Icons.person, "Profile", false, () {
-                Navigator.pushReplacementNamed(context, '/librarian-profile');
-              }),
+              // Make each nav item flexible so they evenly distribute and avoid overflow
+              Expanded(child: _buildNavItem(Icons.dashboard, "Dashboard", true, () {})),
+              Expanded(
+                child: _buildNavItem(Icons.inventory_2, "Inventory", false, () {
+                  Navigator.pushReplacementNamed(context, '/librarian-inventory');
+                }),
+              ),
+              Expanded(
+                child: _buildNavItem(Icons.assessment, "Reports", false, () {
+                  Navigator.pushReplacementNamed(context, '/librarian-reports');
+                }),
+              ),
+              Expanded(
+                child: _buildNavItem(Icons.request_page, "Requests", false, () {
+                  Navigator.pushReplacementNamed(context, '/librarian-requests');
+                }),
+              ),
+              Expanded(
+                child: _buildNavItem(Icons.person, "Profile", false, () {
+                  Navigator.pushReplacementNamed(context, '/librarian-profile');
+                }),
+              ),
             ],
           ),
         ),

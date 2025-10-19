@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
+import 'role_bottom_nav.dart';
+import 'book_image.dart';
+import 'auth_service.dart';
 
 class LibrarianProfilePage extends StatelessWidget {
   const LibrarianProfilePage({super.key});
@@ -8,22 +11,31 @@ class LibrarianProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: const CustomAppBar(),
+      appBar: const CustomAppBar(userRole: 'librarian'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Profile",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(40),
+                  child: BookImage(AuthService.getCurrentUserProfile()['image'] ?? 'lib/assets/profile.jpg', width: 80, height: 80, fit: BoxFit.cover),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Jamal Uddin', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                    SizedBox(height: 4),
+                    Text('Librarian', style: TextStyle(color: Colors.white70)),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 20),
-            
+
             // Stats Cards
             Row(
               children: [
@@ -50,10 +62,10 @@ class LibrarianProfilePage extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 20),
-            
-            // Most-borrowed Books Chart
+
+            // Most-borrowed Books Chart (kept for parity)
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -71,100 +83,32 @@ class LibrarianProfilePage extends StatelessWidget {
                       fontSize: 18,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 250,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildBarChart("Introducti...", 150, 160),
-                        _buildBarChart("Machine Le...", 120, 160),
-                        _buildBarChart("Cyber Secu...", 110, 160),
-                        _buildBarChart("Data Sci...", 90, 160),
-                        _buildBarChart("AI Basics", 80, 160),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF0A84FF),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        "Borrows",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
+                  SizedBox(
+                    height: 140,
+                    child: Center(child: Text('Chart placeholder', style: TextStyle(color: Colors.white38))),
                   ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 20),
-            
-            // Fines Trend Chart
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
+            GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/edit-profile'),
+              child: Card(
                 color: const Color(0xFF2C2D35),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Fines Trend",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 250,
-                    child: CustomPaint(
-                      painter: LineChartPainter(),
-                      child: Container(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: const BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        "Fines",
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ],
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                child: ListTile(
+                  leading: const Icon(Icons.person, color: Colors.blue),
+                  title: const Text('Edit Profile', style: TextStyle(color: Colors.white)),
+                  trailing: const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 16),
+                ),
               ),
             ),
-            
-            const SizedBox(height: 20),
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context, 4),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 4),
     );
   }
 
@@ -230,103 +174,7 @@ class LibrarianProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildBarChart(String label, double value, double maxValue) {
-    return Expanded(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Container(
-            height: (value / maxValue) * 200,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0A84FF),
-              borderRadius: BorderRadius.circular(4),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 10,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNav(BuildContext context, int activeIndex) {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildNavItem(Icons.dashboard, "Dashboard", activeIndex == 0, () {
-                Navigator.pushReplacementNamed(context, '/librarian-dashboard');
-              }),
-              _buildNavItem(Icons.inventory_2, "Inventory", activeIndex == 1, () {
-                Navigator.pushReplacementNamed(context, '/librarian-inventory');
-              }),
-              _buildNavItem(Icons.assessment, "Reports", activeIndex == 2, () {
-                Navigator.pushReplacementNamed(context, '/librarian-reports');
-              }),
-              _buildNavItem(Icons.request_page, "Requests", activeIndex == 3, () {
-                Navigator.pushReplacementNamed(context, '/librarian-requests');
-              }),
-              _buildNavItem(Icons.person, "Profile", activeIndex == 4, () {
-                Navigator.pushReplacementNamed(context, '/librarian-profile');
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    bool isActive,
-    VoidCallback onTap,
-  ) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isActive ? const Color(0xFF0A84FF) : Colors.white54,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? const Color(0xFF0A84FF) : Colors.white54,
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  
 }
 
 class LineChartPainter extends CustomPainter {

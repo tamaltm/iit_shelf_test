@@ -1,62 +1,41 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'auth_service.dart';
 import 'role_bottom_nav.dart';
+import 'auth_service.dart';
+import 'book_image.dart';
 
-class ProfilePage extends StatelessWidget {
-  const ProfilePage({super.key});
+class TeacherProfilePage extends StatelessWidget {
+  const TeacherProfilePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     Color cardColor = const Color(0xFF22232A);
 
-  final role = AuthService.getCurrentUserRole();
-  final displayName = role == 'teacher'
-    ? 'Md. Eusha Kadir'
-    : role == 'librarian'
-      ? 'Jamal Uddin'
-      : role == 'director'
-        ? 'Nizam Uddin'
-        : 'Tamal Mazumder';
-
-  final displayRoleLabel = (role ?? 'student').toUpperCase();
-  final displayEmail = role == 'teacher'
-    ? 'teacher@nstu.edu.bd'
-    : role == 'librarian'
-      ? 'librarian@nstu.edu.bd'
-      : role == 'director'
-        ? 'director@nstu.edu.bd'
-        : 'tamal.mazumder@nstu.edu.bd';
-
-  return Scaffold(
-    backgroundColor: Colors.black,
-    appBar: CustomAppBar(userRole: role),
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: const CustomAppBar(userRole: 'teacher'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            CircleAvatar(
-              radius: 60,
-              backgroundImage: const AssetImage("assets/profile.jpg"),
-              onBackgroundImageError: (exception, stackTrace) {
-                // Fallback handled by child
-              },
-              child: const Icon(Icons.person, size: 60, color: Colors.white54),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(60),
+              child: BookImage(AuthService.getCurrentUserProfile()['image'] ?? 'lib/assets/profile.jpg', width: 120, height: 120, fit: BoxFit.cover),
             ),
             const SizedBox(height: 16),
-            Text(
-              displayName,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+            const Text(
+              "Md. Eusha Kadir",
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
             ),
             const SizedBox(height: 4),
-            Text(
-              displayRoleLabel,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
+            const Text(
+              "Teacher",
+              style: TextStyle(color: Colors.white70, fontSize: 16),
             ),
             const SizedBox(height: 8),
-            Text(
-              displayEmail,
-              style: const TextStyle(color: Colors.blue, fontSize: 14),
+            const Text(
+              "teacher@nstu.edu.bd",
+              style: TextStyle(color: Colors.blue, fontSize: 14),
             ),
             const SizedBox(height: 24),
             Card(
@@ -67,9 +46,9 @@ class ProfilePage extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: const [
-                    _StatColumn(label: "Borrowed", value: "1"),
-                    _StatColumn(label: "Returned", value: "23"),
-                    _StatColumn(label: "Reserved", value: "1"),
+                    _StatColumn(label: "Borrowed", value: "0"),
+                    _StatColumn(label: "Returned", value: "12"),
+                    _StatColumn(label: "Reserved", value: "2"),
                   ],
                 ),
               ),
@@ -116,7 +95,7 @@ class ProfilePage extends StatelessWidget {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 3), // Fixed index from 4 to 3 (Profile is at index 3, not 4)
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 4),
     );
   }
 }

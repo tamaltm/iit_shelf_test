@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'custom_bottom_nav.dart';
+import 'auth_service.dart';
+import 'role_bottom_nav.dart';
 
 class NotificationItem {
   final IconData icon;
@@ -23,7 +24,9 @@ class NotificationItem {
 }
 
 class NotificationsPage extends StatefulWidget {
-  const NotificationsPage({super.key});
+  final String? userRole;
+
+  const NotificationsPage({super.key, this.userRole});
 
   @override
   State<NotificationsPage> createState() => _NotificationsPageState();
@@ -130,7 +133,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: const CustomAppBar(),
+  appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
       body: notifications.isEmpty
           ? Center(
               child: Column(
@@ -160,7 +163,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 return _buildNotificationCard(notifications[index], index);
               },
             ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 0),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
     );
   }
 

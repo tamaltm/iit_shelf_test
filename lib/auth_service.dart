@@ -27,6 +27,40 @@ class AuthService {
     return _userRoles[email.toLowerCase()];
   }
 
+  // Simple global session state for demo purposes
+  static String? _currentUserEmail;
+
+  static void setCurrentUser(String? email) {
+    _currentUserEmail = email?.toLowerCase();
+  }
+
+  static String? getCurrentUserEmail() => _currentUserEmail;
+
+  static String? getCurrentUserRole() {
+    if (_currentUserEmail == null) return null;
+    return getUserRole(_currentUserEmail!);
+  }
+
+  // Simple in-memory profile store (demo only)
+  static final Map<String, Map<String, String>> _profiles = {};
+
+  static Map<String, String> getCurrentUserProfile() {
+    final email = _currentUserEmail ?? '';
+    return _profiles.putIfAbsent(email, () => {
+      'phone': '',
+      'image': 'lib/assets/profile.jpg',
+    });
+  }
+
+  static void updateCurrentUserProfile(Map<String, String> data) {
+    final email = _currentUserEmail ?? '';
+    final existing = _profiles.putIfAbsent(email, () => {
+      'phone': '',
+      'image': 'lib/assets/profile.jpg',
+    });
+    existing.addAll(data);
+  }
+
   static bool validateLogin(String email, String password) {
     // For demo purposes, accept the dummy password for any registered email
     return _userRoles.containsKey(email.toLowerCase()) && 
@@ -36,8 +70,9 @@ class AuthService {
   static String getDefaultRouteForRole(String role) {
     switch (role) {
       case 'student':
-      case 'teacher':
         return '/dashboard';
+      case 'teacher':
+        return '/teacher-dashboard';
       case 'librarian':
         return '/librarian-dashboard';
       case 'director':

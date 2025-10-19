@@ -1,46 +1,37 @@
 import 'package:flutter/material.dart';
 import 'book_detail.dart';
 import 'custom_app_bar.dart';
-import 'auth_service.dart';
 import 'role_bottom_nav.dart';
-import 'filter_page.dart';
 import 'book_resources.dart';
 import 'book_image.dart';
 
-class LibraryPage extends StatefulWidget {
-  final String? userRole;
-
-  const LibraryPage({super.key, this.userRole});
+class TeacherLibraryPage extends StatefulWidget {
+  const TeacherLibraryPage({super.key});
 
   @override
-  State<LibraryPage> createState() => _LibraryPageState();
+  State<TeacherLibraryPage> createState() => _TeacherLibraryPageState();
 }
 
-class _LibraryPageState extends State<LibraryPage> {
+class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
   String selectedFilter = 'Filters';
-  Map<String, dynamic>? activeFilters;
 
-  // books will be built from shared resources below
-
-  // Build books list from shared resources but rotated for this page
   List<Map<String, dynamic>> _buildFromResources() {
-    final List<Map<String, dynamic>> list = [];
-    // rotate start index to create a different order here (start at 3)
-    final start = 3;
+    final list = <Map<String, dynamic>>[];
+    final start = 1; // different rotation for teacher page
     for (var i = 0; i < bookResources.length; i++) {
       final res = bookResources[(start + i) % bookResources.length];
       list.add({
         'image': res['image']!,
         'title': res['title']!,
         'author': res['author']!,
-        'status': i == 1 ? 'Expected: 9/11/2025' : 'Available',
-        'statusColor': i == 1 ? Colors.orange : Colors.green,
-        'action': i == 1 ? 'Reserve' : 'Borrow',
+        'status': i == 2 ? 'Expected: 9/11/2025' : 'Available',
+        'statusColor': i == 2 ? Colors.orange : Colors.green,
+        'action': i == 2 ? 'Reserve' : 'Borrow',
       });
     }
-    // add one extra demo book to keep list length similar
+    // append a demo unavailable book
     list.add({
-      'image': 'https://picsum.photos/id/111/400/600',
+      'image': 'https://picsum.photos/id/116/400/600',
       'title': 'The Art of Cloud Engineering',
       'author': 'Emily White',
       'status': 'Not Available',
@@ -53,23 +44,6 @@ class _LibraryPageState extends State<LibraryPage> {
 
   late final List<Map<String, dynamic>> books = _buildFromResources();
 
-  // simple demo lists for FilterPage
-  final List<String> categories = [
-    'All',
-    'Computer Science',
-    'Mathematics',
-    'Physics',
-  ];
-
-  final List<String> authors = [
-    'All',
-    'John Doe',
-    'Jane Smith',
-    'Robert Johnson',
-    'Alice Brown',
-    'Emily White',
-  ];
-
   @override
   Widget build(BuildContext context) {
     const Color cardColor = Color(0xFF2C2D35);
@@ -77,74 +51,40 @@ class _LibraryPageState extends State<LibraryPage> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-  appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
+      appBar: const CustomAppBar(userRole: 'teacher'),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset('lib/assets/data_science.png', width: 140, height: 180, fit: BoxFit.cover),
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const TextField(
+                      style: TextStyle(color: Colors.white, fontSize: 15),
+                      decoration: InputDecoration(
+                        prefixIcon: Icon(Icons.search, color: Colors.white60, size: 22),
+                        hintText: "Search books...",
+                        hintStyle: TextStyle(color: Colors.white38, fontSize: 15),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
+                  ),
                 ),
-                 const SizedBox(width: 12),
-                 // Search bar + filter button
-                 Expanded(
-                   child: Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     children: [
-                       TextField(
-                         style: const TextStyle(color: Colors.white),
-                         decoration: InputDecoration(
-                           hintText: 'Search books by title or author',
-                           hintStyle: const TextStyle(color: Colors.white60),
-                           filled: true,
-                           fillColor: cardColor,
-                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                           border: OutlineInputBorder(
-                             borderRadius: BorderRadius.circular(10),
-                             borderSide: BorderSide.none,
-                           ),
-                         ),
-                         onChanged: (v) {
-                           // optionally implement search logic
-                         },
-                       ),
-                       const SizedBox(height: 8),
-                       if (activeFilters != null)
-                         Text(
-                           'Filters: ${activeFilters!['author'] ?? activeFilters!['category'] ?? ''}',
-                           style: const TextStyle(color: Colors.white60),
-                         ),
-                     ],
-                   ),
-                 ),
-                 const SizedBox(width: 12),
-                 // Filter button
-                 GestureDetector(
-                   onTap: () async {
-                     final result = await Navigator.push<Map<String, dynamic>?>(
-                       context,
-                       MaterialPageRoute(
-                         builder: (_) => FilterPage(availableCategories: categories, availableAuthors: authors),
-                       ),
-                     );
-                     if (result != null) {
-                       setState(() {
-                         activeFilters = result;
-                       });
-                     }
-                   },
-                   child: Container(
-                     decoration: BoxDecoration(
-                       color: cardColor,
-                       borderRadius: BorderRadius.circular(12),
-                     ),
-                     padding: const EdgeInsets.all(12),
-                     child: const Icon(Icons.tune, color: Colors.white, size: 22),
-                   ),
-                 ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(12),
+                  child: const Icon(Icons.tune, color: Colors.white, size: 22),
+                ),
               ],
             ),
           ),
@@ -152,9 +92,9 @@ class _LibraryPageState extends State<LibraryPage> {
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              itemCount: _getFilteredBooks().length,
+              itemCount: books.length,
               itemBuilder: (context, index) {
-                final book = _getFilteredBooks()[index];
+                final book = books[index];
                 return _buildBookCard(context, book, cardColor);
               },
             ),
@@ -165,22 +105,7 @@ class _LibraryPageState extends State<LibraryPage> {
     );
   }
 
-  List<Map<String, dynamic>> _getFilteredBooks() {
-    if (activeFilters == null) return books;
-  final category = activeFilters!['category'] as String?;
-  final author = activeFilters!['author'] as String?;
-
-    return books.where((b) {
-      if (author != null && author.isNotEmpty && b['author'] != author) return false;
-      if (category != null && category.isNotEmpty && category != 'All') {
-        // demo: no category field in mock data — skip unless implemented
-      }
-      // session/semester demo filters are no-ops unless book metadata includes them
-      return true;
-    }).toList();
-  }
-
-  // Filter chips removed — replaced by dedicated filter page
+  // Filter chips removed — replaced by filter page if needed
 
   Widget _buildBookCard(BuildContext context, Map<String, dynamic> book, Color cardColor) {
     final bool isEbookOnly = book['isEbookOnly'] ?? false;
@@ -266,8 +191,8 @@ class _LibraryPageState extends State<LibraryPage> {
                             author: book['author'],
                             description: 'A comprehensive guide covering the fundamentals and advanced concepts.',
                             available: book['statusColor'] == Colors.green,
-                            role: 'Student', // demo: this page is for students
-                            currentBorrowed: 1, // demo current borrowed count
+                            role: 'Teacher',
+                            currentBorrowed: 2,
                           ),
                         ),
                       );

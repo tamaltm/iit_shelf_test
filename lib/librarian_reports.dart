@@ -16,7 +16,7 @@ class _LibrarianReportsPageState extends State<LibrarianReportsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: const CustomAppBar(),
+      appBar: const CustomAppBar(userRole: 'librarian'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

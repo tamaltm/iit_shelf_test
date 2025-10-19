@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
+import 'auth_service.dart';
+import 'role_bottom_nav.dart';
 
 class GenerateReportsPage extends StatefulWidget {
-  final String userRole; // 'librarian' or 'director'
+  final String? userRole; // 'librarian' or 'director'
   
-  const GenerateReportsPage({super.key, required this.userRole});
+  const GenerateReportsPage({super.key, this.userRole});
 
   @override
   State<GenerateReportsPage> createState() => _GenerateReportsPageState();
@@ -20,7 +22,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: const CustomAppBar(),
+  appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -231,7 +233,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(context),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 2),
     );
   }
 
@@ -317,59 +319,6 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
     );
   }
 
-  Widget _buildBottomNav(BuildContext context) {
-    // Determine active index based on user role
-    int activeIndex = 2; // Reports is active
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: widget.userRole == 'librarian'
-                ? [
-                    _buildNavItem(Icons.dashboard, "Dashboard", activeIndex == 0, () {
-                      Navigator.pushReplacementNamed(context, '/librarian-dashboard');
-                    }),
-                    _buildNavItem(Icons.inventory_2, "Inventory", activeIndex == 1, () {
-                      Navigator.pushReplacementNamed(context, '/librarian-inventory');
-                    }),
-                    _buildNavItem(Icons.assessment, "Reports", activeIndex == 2, () {}),
-                    _buildNavItem(Icons.request_page, "Requests", activeIndex == 3, () {
-                      Navigator.pushReplacementNamed(context, '/librarian-requests');
-                    }),
-                    _buildNavItem(Icons.person, "Profile", activeIndex == 4, () {
-                      Navigator.pushReplacementNamed(context, '/librarian-profile');
-                    }),
-                  ]
-                : [
-                    _buildNavItem(Icons.dashboard, "Dashboard", activeIndex == 0, () {
-                      Navigator.pushReplacementNamed(context, '/director-dashboard');
-                    }),
-                    _buildNavItem(Icons.inventory_2, "Inventory", activeIndex == 1, () {}),
-                    _buildNavItem(Icons.assessment, "Reports", activeIndex == 2, () {}),
-                    _buildNavItem(Icons.request_page, "Requests", activeIndex == 3, () {}),
-                    _buildNavItem(Icons.person, "Profile", activeIndex == 4, () {
-                      Navigator.pushNamed(context, '/profile');
-                    }),
-                  ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildNavItem(
     IconData icon,
     String label,
@@ -399,4 +348,5 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
       ),
     );
   }
+  
 }

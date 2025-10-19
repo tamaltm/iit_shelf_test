@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'custom_bottom_nav.dart';
+import 'role_bottom_nav.dart';
+import 'book_resources.dart';
+import 'book_image.dart';
 
 class Book {
   final String image;
@@ -27,67 +29,36 @@ class DirectorDashboardPage extends StatefulWidget {
 }
 
 class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
-  final List<Book> borrowedBooks = [
+  final borrowedBooks = [
     Book(
-      image: 'https://via.placeholder.com/80x120/4A90E2/FFFFFF?text=Data+Science',
-      title: 'Foundations of Data Science',
-      author: 'John Doe',
+      image: bookResources[0]['image']!,
+      title: bookResources[0]['title']!,
+      author: bookResources[0]['author']!,
       dueLabel: 'Due: 2024-12-30',
       dueColor: Colors.orange,
       id: 'ID: 12345',
     ),
     Book(
-      image: 'https://via.placeholder.com/80x120/9B59B6/FFFFFF?text=AI',
-      title: 'Introduction to AI',
-      author: 'Jane Smith',
+      image: bookResources[1]['image']!,
+      title: bookResources[1]['title']!,
+      author: bookResources[1]['author']!,
       dueLabel: 'Due: 2024-12-25',
       dueColor: Colors.red,
       id: 'ID: 12346',
     ),
   ];
 
-  final List<Book> recommendedBooks = [
-    Book(
-      image: 'https://via.placeholder.com/120x180/E74C3C/FFFFFF?text=Machine+Learning',
-      title: 'Machine Learning Basics',
-      author: 'Sarah Johnson',
+  final recommendedBooks = List<Book>.generate(
+    bookResources.length,
+    (i) => Book(
+      image: bookResources[(i + 1) % bookResources.length]['image']!,
+      title: bookResources[(i + 1) % bookResources.length]['title']!,
+      author: bookResources[(i + 1) % bookResources.length]['author']!,
       dueLabel: 'Available',
       dueColor: Colors.green,
-      id: 'ID: 20001',
+      id: 'ID: ${20000 + i}',
     ),
-    Book(
-      image: 'https://via.placeholder.com/120x180/3498DB/FFFFFF?text=Python',
-      title: 'Python for Data Analysis',
-      author: 'Michael Chen',
-      dueLabel: 'Available',
-      dueColor: Colors.green,
-      id: 'ID: 20002',
-    ),
-    Book(
-      image: 'https://via.placeholder.com/120x180/2ECC71/FFFFFF?text=Deep+Learning',
-      title: 'Deep Learning Fundamentals',
-      author: 'Emily Davis',
-      dueLabel: 'Available',
-      dueColor: Colors.green,
-      id: 'ID: 20003',
-    ),
-    Book(
-      image: 'https://via.placeholder.com/120x180/F39C12/FFFFFF?text=Statistics',
-      title: 'Statistical Methods',
-      author: 'Robert Wilson',
-      dueLabel: 'Available',
-      dueColor: Colors.green,
-      id: 'ID: 20004',
-    ),
-    Book(
-      image: 'https://via.placeholder.com/120x180/9B59B6/FFFFFF?text=Neural+Networks',
-      title: 'Neural Networks Guide',
-      author: 'Lisa Anderson',
-      dueLabel: 'Available',
-      dueColor: Colors.green,
-      id: 'ID: 20005',
-    ),
-  ];
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -96,25 +67,13 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
     
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: CustomAppBar(
-        userName: "John",
-        userRole: "Director",
-        profileImageUrl: "https://randomuser.me/api/portraits/men/44.jpg",
-      ),
+  appBar: const CustomAppBar(userRole: 'director'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Dashboard Overview",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
-            ),
-            const SizedBox(height: 16),
+            // Dashboard header removed per request
             
             Row(
               children: [
@@ -138,7 +97,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -240,7 +199,8 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -254,7 +214,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/library');
+                    Navigator.pushNamed(context, '/library', arguments: {'userRole': 'director'});
                   },
                   child: const Text(
                     "View All",
@@ -275,7 +235,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               ),
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -288,10 +248,10 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                     fontSize: 18,
                   ),
                 ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/borrowed');
-                  },
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/borrowed', arguments: {'userRole': 'director'});
+                    },
                   child: const Text(
                     "View All",
                     style: TextStyle(color: Color(0xFF0A84FF)),
@@ -303,7 +263,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
             
             ...borrowedBooks.map((book) => _buildBookCard(book)).toList(),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             
             const Text(
               "Quick Actions",
@@ -384,7 +344,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 0),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
     );
   }
 
@@ -402,27 +362,12 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                book.image,
-                width: 140,
-                height: 180,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 140,
-                    height: 180,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[800],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Icon(
-                      Icons.book,
-                      color: Colors.white54,
-                      size: 48,
-                    ),
-                  );
-                },
-              ),
+                child: BookImage(
+                  book.image,
+                  width: 140,
+                  height: 180,
+                  fit: BoxFit.cover,
+                ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -504,19 +449,11 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network(
+            child: BookImage(
               book.image,
               width: isSmallScreen ? 50 : 60,
               height: isSmallScreen ? 75 : 90,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  width: isSmallScreen ? 50 : 60,
-                  height: isSmallScreen ? 75 : 90,
-                  color: Colors.grey[800],
-                  child: const Icon(Icons.book, color: Colors.white54),
-                );
-              },
             ),
           ),
           SizedBox(width: isSmallScreen ? 8 : 12),

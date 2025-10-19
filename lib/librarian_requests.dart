@@ -27,7 +27,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: const CustomAppBar(),
+      appBar: const CustomAppBar(userRole: 'librarian'),
       body: Column(
         children: [
           Padding(

@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'return_details.dart';
+import 'custom_app_bar.dart';
+import 'auth_service.dart';
+import 'role_bottom_nav.dart';
+import 'book_resources.dart';
+import 'book_image.dart';
 
 class BorrowedBooksPage extends StatelessWidget {
   const BorrowedBooksPage({super.key});
@@ -10,18 +15,7 @@ class BorrowedBooksPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        title: const Text('IITShelf', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        actions: const [
-          CircleAvatar(
-            radius: 16,
-            backgroundImage: NetworkImage("https://randomuser.me/api/portraits/men/44.jpg"),
-          ),
-          SizedBox(width: 12)
-        ],
-      ),
+  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -64,18 +58,18 @@ class BorrowedBooksPage extends StatelessWidget {
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: const [
+              children: [
                 BorrowedBookCard(
-                  image: "https://images.unsplash.com/photo-1512820790803-83ca734da794",
-                  title: "Foundations of Data Science",
-                  author: "John Doe",
+                  image: bookResources[0]['image']!,
+                  title: bookResources[0]['title']!,
+                  author: bookResources[0]['author']!,
                   id: "824(B)",
                   due: "Due in 2 days",
                 ),
                 BorrowedBookCard(
-                  image: "https://images.unsplash.com/photo-1507842217343-583bb7270b66",
-                  title: "Introduction to Quantum Computing",
-                  author: "Robert Johnson",
+                  image: bookResources[1]['image']!,
+                  title: bookResources[1]['title']!,
+                  author: bookResources[1]['author']!,
                   id: "321(A)",
                   due: "Due in 5 days",
                 ),
@@ -84,34 +78,7 @@ class BorrowedBooksPage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: cardColor,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.white,
-        currentIndex: 2,
-        showSelectedLabels: true,
-        showUnselectedLabels: true,
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushNamed(context, '/dashboard');
-          } else if (index == 1) {
-            Navigator.pushNamed(context, '/library');
-          } else if (index == 2) {
-            Navigator.pushNamed(context, '/my-books');
-          } else if (index == 3) {
-            Navigator.pushNamed(context, '/payment');
-          } else if (index == 4) {
-            Navigator.pushNamed(context, '/profile');
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: "My Books"),
-          BottomNavigationBarItem(icon: Icon(Icons.payment), label: "Payments"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
-        ],
-      ),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 2),
     );
   }
 }
@@ -173,7 +140,7 @@ class BorrowedBookCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(image, width: 54, height: 60, fit: BoxFit.cover),
+                  child: BookImage(image, width: 54, height: 60, fit: BoxFit.cover),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

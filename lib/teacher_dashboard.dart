@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
-import 'auth_service.dart';
 import 'book_resources.dart';
 import 'book_image.dart';
 
@@ -23,56 +22,65 @@ class Book {
   });
 }
 
-class ProfessorDashboardPage extends StatefulWidget {
-  const ProfessorDashboardPage({super.key});
+class TeacherDashboardPage extends StatefulWidget {
+  const TeacherDashboardPage({super.key});
   @override
-  State<ProfessorDashboardPage> createState() => _ProfessorDashboardPageState();
+  State<TeacherDashboardPage> createState() => _TeacherDashboardPageState();
 }
 
-class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
-    // build small sets from shared resources, rotated
-    final borrowedBooks = [
-      Book(
-        image: bookResources[0]['image']!,
-        title: bookResources[0]['title']!,
-        author: bookResources[0]['author']!,
-        dueLabel: 'Due: 2024-12-30',
-        dueColor: Colors.orange,
-        id: 'ID: 12345',
-      ),
-      Book(
-        image: bookResources[1]['image']!,
-        title: bookResources[1]['title']!,
-        author: bookResources[1]['author']!,
-        dueLabel: 'Due: 2024-12-25',
-        dueColor: Colors.red,
-        id: 'ID: 12346',
-      ),
-    ];
+class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
+  final borrowedBooks = [
+    Book(
+      image: bookResources[3]['image']!,
+      title: bookResources[3]['title']!,
+      author: bookResources[3]['author']!,
+      dueLabel: 'Due: 2024-12-30',
+      dueColor: Colors.orange,
+      id: 'ID: 12345',
+    ),
+    Book(
+      image: bookResources[0]['image']!,
+      title: bookResources[0]['title']!,
+      author: bookResources[0]['author']!,
+      dueLabel: 'Due: 2024-12-25',
+      dueColor: Colors.red,
+      id: 'ID: 12346',
+    ),
+  ];
 
-    final recommendedBooks = List<Book>.generate(
-      bookResources.length,
-      (i) => Book(
-        image: bookResources[(i + 2) % bookResources.length]['image']!,
-        title: bookResources[(i + 2) % bookResources.length]['title']!,
-        author: bookResources[(i + 2) % bookResources.length]['author']!,
-        dueLabel: 'Available',
-        dueColor: Colors.green,
-        id: 'ID: ${20000 + i}',
-      ),
-    );
+  final recommendedBooks = List<Book>.generate(
+    bookResources.length,
+    (i) => Book(
+      image: bookResources[i]['image']!,
+      title: bookResources[i]['title']!,
+      author: bookResources[i]['author']!,
+      dueLabel: 'Available',
+      dueColor: Colors.green,
+      id: 'ID: ${20000 + i}',
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      appBar: const CustomAppBar(
+        userRole: 'teacher',
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Dashboard header removed per request
+            const Text(
+              "Teacher Dashboard",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+              ),
+            ),
+            const SizedBox(height: 16),
             
             Row(
               children: [
@@ -108,7 +116,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
+                      color: Colors.red.withAlpha(51),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -131,7 +139,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'BDT 150.00',
+                          'BDT 0.00',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -166,6 +174,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
             ),
             
             const SizedBox(height: 16),
+            
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -190,7 +199,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 250, // Increased height from 240 to 250 to fix overflow error
+              height: 250,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: recommendedBooks.length,
@@ -272,7 +281,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                   icon: Icons.call,
                   label: "Contact Librarian",
                   onTap: () {
-                    Navigator.pushNamed(context, '/contact-librarian'); // Updated to navigate to contact librarian page
+                    Navigator.pushNamed(context, '/contact-librarian');
                   },
                 ),
               ],
@@ -420,7 +429,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: book.dueColor.withOpacity(0.2),
+                    color: book.dueColor.withAlpha(51),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(

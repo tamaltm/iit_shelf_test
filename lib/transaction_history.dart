@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'auth_service.dart';
+// ...existing imports...
+import 'custom_app_bar.dart';
+import 'role_bottom_nav.dart';
+import 'book_resources.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
-  final String userRole;
+  final String? userRole;
 
   const TransactionHistoryPage({
     super.key,
-    required this.userRole,
+    this.userRole,
   });
 
   @override
@@ -21,7 +26,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   final List<Map<String, dynamic>> transactions = [
     {
       'type': 'Borrow',
-      'bookTitle': 'Introduction to Quantum Computing',
+  'bookTitle': bookResources[2]['title'],
       'userId': '12345',
       'userName': 'John Doe',
       'date': '2024-01-15',
@@ -43,7 +48,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
     },
     {
       'type': 'Fine Payment',
-      'bookTitle': 'Machine Learning Basics',
+  'bookTitle': bookResources[0]['title'],
       'userId': '23457',
       'userName': 'Alex Smith',
       'date': '2024-01-14',
@@ -104,29 +109,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2C2D35),
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'Transaction History',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download, color: Colors.white),
-            onPressed: () {
-              _showExportDialog();
-            },
-          ),
-        ],
-      ),
+  appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
       body: Column(
         children: [
           // Search and Filter Section
@@ -135,27 +118,38 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
             color: const Color(0xFF2C2D35),
             child: Column(
               children: [
-                // Search Bar
-                TextField(
-                  controller: searchController,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'Search by user ID or book title...',
-                    hintStyle: const TextStyle(color: Colors.white54),
-                    prefixIcon: const Icon(Icons.search, color: Colors.white54),
-                    filled: true,
-                    fillColor: const Color(0xFF1A1B1E),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                // Search Bar with export button
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: searchController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Search by user ID or book title...',
+                          hintStyle: const TextStyle(color: Colors.white54),
+                          prefixIcon: const Icon(Icons.search, color: Colors.white54),
+                          filled: true,
+                          fillColor: const Color(0xFF1A1B1E),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          setState(() {});
+                        },
+                      ),
                     ),
-                  ),
-                  onChanged: (value) {
-                    setState(() {});
-                  },
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.file_download, color: Colors.white),
+                      onPressed: _showExportDialog,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Filter Chips
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -170,7 +164,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Date Range Selector
                 Row(
                   children: [
@@ -207,7 +201,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
             ),
           ),
         ],
-      ),
+  ),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 3),
     );
   }
 

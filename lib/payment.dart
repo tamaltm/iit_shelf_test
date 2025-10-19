@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'custom_bottom_nav.dart';
+import 'role_bottom_nav.dart';
+import 'auth_service.dart';
 
 class PaymentPage extends StatelessWidget {
   const PaymentPage({super.key});
@@ -11,7 +12,7 @@ class PaymentPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: const CustomAppBar(),
+  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -101,7 +102,7 @@ class PaymentPage extends StatelessWidget {
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 2), // Fixed index from 3 to 2 for Payments
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 2), // Fixed index from 3 to 2 for Payments
     );
   }
 }

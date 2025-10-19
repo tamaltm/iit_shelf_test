@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'custom_bottom_nav.dart';
+import 'auth_service.dart';
+import 'role_bottom_nav.dart';
+import 'book_resources.dart';
 
 class UploadPdfPage extends StatefulWidget {
   const UploadPdfPage({super.key});
@@ -15,29 +17,30 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
   String? _selectedRequestedBook;
   String _pdfUrl = '';
 
-  final List<Map<String, String>> existingBooks = [
-    {'title': 'Foundations of Data Science', 'isbn': '123512ASED', 'author': 'John Doe'},
-    {'title': 'Introduction to AI', 'isbn': '234612AB', 'author': 'Jane Smith'},
-    {'title': 'Machine Learning Basics', 'isbn': '345713BC', 'author': 'Sarah Johnson'},
-    {'title': 'Database Management', 'isbn': '456814CD', 'author': 'Robert Wilson'},
+  // Use canonical book resources; rotate indices for variety in different pages.
+  final existingBooks = [
+    {'title': bookResources[3]['title']!, 'isbn': '123512ASED', 'author': bookResources[3]['author']!},
+    {'title': bookResources[0]['title']!, 'isbn': '234612AB', 'author': bookResources[0]['author']!},
+    {'title': bookResources[1]['title']!, 'isbn': '345713BC', 'author': bookResources[1]['author']!},
+    {'title': bookResources[2]['title']!, 'isbn': '456814CD', 'author': bookResources[2]['author']!},
   ];
 
-  final List<Map<String, String>> requestedBooks = [
-    {'title': 'Introduction to Quantum Computing', 'isbn': '123512ASED', 'author': 'Robert Johnson'},
+  final requestedBooks = [
+    {'title': bookResources[2]['title']!, 'isbn': '123512ASED', 'author': bookResources[2]['author']!},
     {'title': 'System Engineering', 'isbn': '234612AB', 'author': 'Emily Davis'},
     {'title': 'Advanced Algorithms', 'isbn': '345713BC', 'author': 'Michael Chen'},
   ];
 
   final List<Map<String, dynamic>> pendingUploads = [
     {
-      'bookTitle': 'Foundations of Data Science',
+      'bookTitle': bookResources[3]['title']!,
       'uploadType': 'Update',
       'status': 'Pending',
       'submittedDate': '2024-12-20',
       'notes': 'Updated edition with new chapters',
     },
     {
-      'bookTitle': 'Introduction to Quantum Computing',
+      'bookTitle': bookResources[2]['title']!,
       'uploadType': 'New Request',
       'status': 'Approved',
       'submittedDate': '2024-12-18',
@@ -68,7 +71,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: const CustomAppBar(),
+  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         children: [
           Padding(
@@ -119,7 +122,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
           ),
         ],
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 1),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'login.dart';
 import 'register.dart';
 import 'dashboard.dart';
+import 'teacher_dashboard.dart';
 import 'my_books.dart';
 import 'borrowed.dart';
 import 'returned.dart';
@@ -10,25 +11,33 @@ import 'library.dart';
 import 'book_detail.dart';
 import 'payment.dart';
 import 'profile.dart';
+import 'edit_profile.dart';
 import 'notifications.dart';
 import 'librarian_dashboard.dart';
 import 'librarian_profile.dart';
+import 'teacher_profile.dart';
 import 'librarian_reports.dart';
 import 'librarian_inventory.dart';
 import 'librarian_requests.dart';
 import 'general_notices.dart';
-import 'auth_service.dart'; // Added auth service import
-import 'director_dashboard.dart'; // Added director dashboard import
+import 'auth_service.dart';
+import 'director_dashboard.dart';
 import 'add_shelf.dart';
 import 'remove_shelf.dart';
 import 'add_book.dart';
 import 'remove_book.dart';
-import 'generate_reports.dart'; // Added generate reports import
-import 'transaction_history.dart'; // Added transaction history import
-import 'return_details.dart'; // Added return details import
-import 'contact_librarian.dart'; // Added contact librarian import
-import 'request_book_details.dart'; // Added request book details import
-import 'upload_pdf.dart'; // Added upload_pdf import
+import 'generate_reports.dart';
+import 'transaction_history.dart';
+import 'return_details.dart';
+import 'contact_librarian.dart';
+import 'request_book_details.dart';
+import 'upload_pdf.dart';
+import 'director_my_books.dart';
+import 'director_profile.dart';
+import 'teacher_my_books.dart';
+import 'teacher_library.dart';
+import 'director_library.dart';
+import 'librarian_my_books.dart';
 
 void main() => runApp(IITShelfApp());
 
@@ -46,12 +55,20 @@ class IITShelfApp extends StatelessWidget {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/dashboard': (context) => const ProfessorDashboardPage(),
+        '/teacher-dashboard': (context) => const TeacherDashboardPage(),
+  '/teacher-profile': (context) => const TeacherProfilePage(),
+        '/teacher-library': (context) => const TeacherLibraryPage(),
+        '/teacher-my-books': (context) => const TeacherMyBooksPage(),
         '/librarian-dashboard': (context) => const LibrarianDashboardPage(),
         '/librarian-profile': (context) => const LibrarianProfilePage(),
         '/librarian-reports': (context) => const LibrarianReportsPage(),
         '/librarian-inventory': (context) => const LibrarianInventoryPage(),
         '/librarian-requests': (context) => const LibrarianRequestsPage(),
-        '/director-dashboard': (context) => const DirectorDashboardPage(), // Added director dashboard route
+        '/librarian-my-books': (context) => const LibrarianMyBooksPage(),
+        '/director-dashboard': (context) => const DirectorDashboardPage(),
+        '/director-library': (context) => const DirectorLibraryPage(),
+        '/director-my-books': (context) => const DirectorMyBooksPage(),
+        '/director-profile': (context) => const DirectorProfilePage(),
         '/add-shelf': (context) => const AddShelfPage(),
         '/remove-shelf': (context) => const RemoveShelfPage(),
         '/add-book': (context) => const AddBookPage(),
@@ -60,30 +77,37 @@ class IITShelfApp extends StatelessWidget {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           final userRole = args?['userRole'] ?? 'librarian';
           return GenerateReportsPage(userRole: userRole);
-        }, // Added generate reports route
+        },
         '/transaction-history': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
-          final userRole = args?['userRole'] ?? 'librarian';
+          final userRole = args?['userRole'] ?? 'user';
           return TransactionHistoryPage(userRole: userRole);
-        }, // Added transaction history route with user role parameter
+        },
         '/my-books': (context) => const BookHistoryPage(),
         '/borrowed': (context) => const BorrowedBooksPage(),
         '/returned': (context) => const ReturnedBooksPage(),
         '/reserved': (context) => const ReservedBooksPage(),
-        '/library': (context) => const LibraryPage(),
+        '/library': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return LibraryPage(userRole: args?['userRole']);
+        },
         '/payment': (context) => const PaymentPage(),
-        '/profile': (context) => const ProfilePage(),
-        '/notifications': (context) => const NotificationsPage(),
+  '/profile': (context) => const ProfilePage(),
+  '/edit-profile': (context) => const EditProfilePage(),
+        '/notifications': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          return NotificationsPage(userRole: args?['userRole']);
+        },
         '/general-notices': (context) => const GeneralNoticesPage(),
-        '/contact-librarian': (context) => const ContactLibrarianPage(), // Added contact librarian route
+        '/contact-librarian': (context) => const ContactLibrarianPage(),
         '/request-book-details': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return RequestBookDetailsPage(
             requestId: args?['requestId'],
             status: args?['status'],
           );
-        }, // Added request book details route
-        '/upload-pdf': (context) => const UploadPdfPage(), // Added upload PDF route
+        },
+        '/upload-pdf': (context) => const UploadPdfPage(),
         '/book-detail': (context) {
           final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
           return BookDetailPage(
@@ -141,8 +165,9 @@ class _IITShelfHomeState extends State<IITShelfHome> {
     }
 
     if (AuthService.validateLogin(email, password)) {
-      final role = AuthService.getUserRole(email);
-      final route = AuthService.getDefaultRouteForRole(role!);
+  final role = AuthService.getUserRole(email);
+  final route = AuthService.getDefaultRouteForRole(role!);
+  AuthService.setCurrentUser(email);
       
       // Check if widget is still mounted before using context
       if (mounted) {
@@ -217,7 +242,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.red.withAlpha(51), // Updated withOpacity to withAlpha for Flutter 3.19+
+                      color: Colors.red.withAlpha(51),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.red),
                     ),
@@ -388,9 +413,9 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.blue.withAlpha(26), // Updated withOpacity to withAlpha for Flutter 3.19+
+                    color: Colors.blue.withAlpha(26),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.withAlpha(77)), // Updated withOpacity to withAlpha for Flutter 3.19+
+                    border: Border.all(color: Colors.blue.withAlpha(77)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'book_image.dart';
 import 'reserve_pending.dart';
 
 class ReserveConfirmPage extends StatelessWidget {
@@ -52,13 +53,13 @@ class ReserveConfirmPage extends StatelessWidget {
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  image,
-                  height: 180,
-                  width: 130,
-                  fit: BoxFit.cover,
-                ),
+                    borderRadius: BorderRadius.circular(12),
+                    child: BookImage(
+                      image,
+                      height: 180,
+                      width: 130,
+                      fit: BoxFit.cover,
+                    ),
               ),
             ),
             const SizedBox(height: 24),

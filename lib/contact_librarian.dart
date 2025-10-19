@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'custom_bottom_nav.dart';
+import 'role_bottom_nav.dart';
+import 'auth_service.dart';
 
 class ContactLibrarianPage extends StatefulWidget {
   const ContactLibrarianPage({super.key});
@@ -63,7 +64,7 @@ class _ContactLibrarianPageState extends State<ContactLibrarianPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: const CustomAppBar(),
+  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -395,7 +396,7 @@ class _ContactLibrarianPageState extends State<ContactLibrarianPage> {
           ],
         ),
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 0),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
     );
   }
 

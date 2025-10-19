@@ -6,6 +6,9 @@ class BookDetailPage extends StatelessWidget {
   final String image, title, author, description;
   final bool available;
   final bool pdf_available;
+  // new: role and current borrowed count (frontend demo state)
+  final String role;
+  final int currentBorrowed;
 
   const BookDetailPage({
     super.key,
@@ -15,6 +18,8 @@ class BookDetailPage extends StatelessWidget {
     required this.description,
     required this.available,
     this.pdf_available = true,
+    this.role = 'Student',
+    this.currentBorrowed = 0,
   });
 
   @override
@@ -37,7 +42,7 @@ class BookDetailPage extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(image, height: 300, fit: BoxFit.cover),
+                  child: Image.asset('lib/assets/data_science.png', height: 300, fit: BoxFit.cover),
                 ),
               ),
             ),
@@ -135,30 +140,80 @@ class BookDetailPage extends StatelessWidget {
                     child: ElevatedButton(
                       onPressed: available
                           ? () {
+                              // Role-based limits
+                              final roleLower = role.toLowerCase();
+                              final int maxDays = roleLower == 'student' ? 7 : (roleLower == 'teacher' || roleLower == 'director' ? 15 : 7);
+                              final int maxBooks = roleLower == 'student' ? 2 : (roleLower == 'teacher' || roleLower == 'director' ? 5 : 2);
+
                               showDialog(
                                 context: context,
-                                builder: (context) => AlertDialog(
-                                  backgroundColor: cardColor,
-                                  title: const Text("Confirm Borrow", style: TextStyle(color: Colors.white)),
-                                  content: Text(
-                                    "Do you want to borrow '$title'?",
-                                    style: const TextStyle(color: Colors.white70),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text("Cancel"),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.pop(context);
-                                        Navigator.pushNamed(context, '/my-books');
-                                      },
-                                      style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                                      child: const Text("Confirm", style: TextStyle(color: Colors.white)),
-                                    ),
-                                  ],
-                                ),
+                                builder: (context) {
+                                  int selectedDays = maxDays;
+                                  String? errorMessage;
+                                  final bool atLimit = currentBorrowed >= maxBooks;
+
+                                  return StatefulBuilder(builder: (context, setState) {
+                                    return AlertDialog(
+                                      backgroundColor: cardColor,
+                                      title: const Text("Confirm Borrow", style: TextStyle(color: Colors.white)),
+                                      content: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            "Do you want to borrow '$title'?",
+                                            style: const TextStyle(color: Colors.white70),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'Select duration (days):',
+                                            style: TextStyle(color: Colors.white70),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          DropdownButton<int>(
+                                            value: selectedDays,
+                                            dropdownColor: cardColor,
+                                            items: List.generate(maxDays, (i) => i + 1)
+                                                .map((d) => DropdownMenuItem(value: d, child: Text('$d day${d>1?"s":""}', style: TextStyle(color: Colors.white))))
+                                                .toList(),
+                                            onChanged: (v) => setState(() {
+                                              selectedDays = v ?? selectedDays;
+                                            }),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'Role: $role — max $maxBooks book(s), max $maxDays days each',
+                                            style: TextStyle(color: Colors.white54, fontSize: 12),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          if (atLimit)
+                                            Text('Borrowing limit reached: $currentBorrowed / $maxBooks', style: TextStyle(color: Colors.redAccent)),
+                                          if (errorMessage != null) ...[
+                                            const SizedBox(height: 8),
+                                            Text(errorMessage, style: TextStyle(color: Colors.redAccent)),
+                                          ]
+                                        ],
+                                      ),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () => Navigator.pop(context),
+                                          child: const Text("Cancel"),
+                                        ),
+                                        ElevatedButton(
+                                          onPressed: atLimit
+                                              ? null
+                                              : () {
+                                                  // Basic frontend confirmation — in a real app you'd call an API and pass selectedDays
+                                                  Navigator.pop(context);
+                                                  Navigator.pushNamed(context, '/my-books');
+                                                },
+                                          style: ElevatedButton.styleFrom(backgroundColor: atLimit ? Colors.grey : Colors.blue),
+                                          child: const Text("Confirm", style: TextStyle(color: Colors.white)),
+                                        ),
+                                      ],
+                                    );
+                                  });
+                                },
                               );
                             }
                           : () {

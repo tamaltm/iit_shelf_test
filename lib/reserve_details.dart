@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'book_image.dart';
 
 class ReserveDetailsPage extends StatelessWidget {
   final String image, title, author;
@@ -59,7 +60,7 @@ class ReserveDetailsPage extends StatelessWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
+                  child: BookImage(
                     image,
                     height: 180,
                     width: 130,

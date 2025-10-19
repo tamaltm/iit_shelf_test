@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
-import 'custom_bottom_nav.dart';
+import 'auth_service.dart';
+import 'role_bottom_nav.dart';
+import 'book_resources.dart';
+import 'book_image.dart';
 
 // Define a single Book model to represent all states
 class Book {
@@ -20,9 +23,9 @@ class Book {
 // Example mock lists; replace or populate from backend/API
 final borrowedBooks = [
   Book(
-    image: "https://covers.openlibrary.org/b/id/10153479-L.jpg",
-    title: "Foundations of Data Science",
-    author: "John Doe",
+    image: bookResources[2]['image']!,
+    title: bookResources[2]['title']!,
+    author: bookResources[2]['author']!,
     dueLabel: "Due in 2 days",
     dueColor: Colors.teal,
     id: "824(B)",
@@ -31,9 +34,9 @@ final borrowedBooks = [
 
 final returnedBooks = [
   Book(
-    image: "https://covers.openlibrary.org/b/id/10153479-L.jpg",
-    title: "Introduction to Data Science",
-    author: "John Doe",
+    image: bookResources[3]['image']!,
+    title: bookResources[3]['title']!,
+    author: bookResources[3]['author']!,
     dueLabel: "Returned 3 days ago",
     dueColor: Colors.grey,
     id: "823(A)",
@@ -42,9 +45,9 @@ final returnedBooks = [
 
 final reservedBooks = [
   Book(
-    image: "https://covers.openlibrary.org/b/id/10153479-L.jpg",
-    title: "The Future of Artificial Intelligence",
-    author: "Jane Smith",
+    image: bookResources[0]['image']!,
+    title: bookResources[0]['title']!,
+    author: bookResources[0]['author']!,
     dueLabel: "Expected: 9/11/2025",
     dueColor: Colors.orange,
     id: "901(Q)",
@@ -59,7 +62,7 @@ class BookHistoryPage extends StatelessWidget {
     Color cardColor = const Color(0xFF22232A);
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: const CustomAppBar(),
+  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         children: [
           Padding(
@@ -116,7 +119,7 @@ class BookHistoryPage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: const CustomBottomNav(currentIndex: 1),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
     );
   }
 }
@@ -209,7 +212,7 @@ class BookHistoryCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Image.network(image, width: 54, height: 60, fit: BoxFit.cover),
+                  child: BookImage(image, width: 54, height: 60, fit: BoxFit.cover),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
