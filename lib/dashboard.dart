@@ -79,7 +79,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                 Expanded(
                   child: _buildStatCard(
                     "Books Borrowed",
-                    "2/5",
+                    "2/2",
                     Icons.menu_book,
                     Colors.blue,
                   ),
