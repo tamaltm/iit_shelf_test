@@ -22,7 +22,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
   final _pdfUrlController = TextEditingController();
   
   bool _imageUploaded = false;
-  String _userRole = "Student";
+  final String _userRole = "Student";
 
   @override
   void dispose() {

@@ -366,7 +366,7 @@ class _LibrarianReportsPageState extends State<LibrarianReportsPage> {
         color: const Color(0xFF2C2D35),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

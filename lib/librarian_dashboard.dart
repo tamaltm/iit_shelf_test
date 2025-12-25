@@ -16,9 +16,6 @@ class LibrarianDashboardPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Librarian Dashboard heading removed per request
-            
-            // Stats Grid
             GridView.count(
               crossAxisCount: 2,
               crossAxisSpacing: 8,
@@ -43,7 +40,7 @@ class LibrarianDashboardPage extends StatelessWidget {
                   "Pending Requests",
                   "7",
                   Icons.calendar_today,
-                  Colors.red.shade700,
+                  Colors.red,
                 ),
                 _buildStatCard(
                   "Fines Collected Today",
@@ -154,14 +151,6 @@ class LibrarianDashboardPage extends StatelessWidget {
                 ),
                 _buildActionButton(
                   context,
-                  "Contact Support",
-                  Icons.support_agent,
-                  () {
-                    Navigator.pushNamed(context, '/contact-librarian');
-                  },
-                ),
-                _buildActionButton(
-                  context,
                   "Upload PDF",
                   Icons.upload_file,
                   () {
@@ -227,145 +216,6 @@ class LibrarianDashboardPage extends StatelessWidget {
             ),
             
             const SizedBox(height: 20),
-            
-            // Borrow Restrictions removed per request
-            
-            const SizedBox(height: 24),
-            
-            // Quick Actions
-            const Text(
-              "Quick Actions",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.5,
-              children: [
-                _buildActionButton(
-                  context,
-                  "Manage Inventory",
-                  Icons.inventory_2,
-                  () {
-                    Navigator.pushNamed(context, '/librarian-inventory');
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  "Search books",
-                  Icons.search,
-                  () {
-                    Navigator.pushNamed(context, '/library');
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  "Transaction History",
-                  Icons.history,
-                  () {
-                    Navigator.pushNamed(
-                      context,
-                      '/transaction-history',
-                      arguments: {'userRole': 'librarian'},
-                    );
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  "Generate Report",
-                  Icons.assessment,
-                  () {
-                    Navigator.pushNamed(
-                      context,
-                      '/generate-reports',
-                      arguments: {'userRole': 'librarian'},
-                    );
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  "Request New Book",
-                  Icons.book,
-                  () {
-                    Navigator.pushNamed(context, '/request-book-details');
-                  },
-                ),
-                // Contact Support quick action removed per request
-                _buildActionButton(
-                  context,
-                  "Upload PDF",
-                  Icons.upload_file,
-                  () {
-                    Navigator.pushNamed(context, '/upload-pdf');
-                  },
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Recent Activity Feed
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Recent Activity Feed",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildActivityItem(
-                    "2 min ago",
-                    'User Sarah B. borrowed "The Complete Gui..."',
-                    Icons.menu_book,
-                    Colors.blue,
-                  ),
-                  _buildActivityItem(
-                    "10 min ago",
-                    'User John D. returned "Database Manage..."',
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                  _buildActivityItem(
-                    "30 min ago",
-                    "User Alex L. paid TK 20.00 fine",
-                    Icons.payment,
-                    Colors.red,
-                  ),
-                  _buildActivityItem(
-                    "1 hour ago",
-                    'User Maria G. borrowed "System Engineer..."',
-                    Icons.menu_book,
-                    Colors.blue,
-                  ),
-                  _buildActivityItem(
-                    "2 hours ago",
-                    'User David P. requested for addition "Sapi..."',
-                    Icons.add_circle,
-                    Colors.green,
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -375,7 +225,7 @@ class LibrarianDashboardPage extends StatelessWidget {
 
   Widget _buildStatCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFF2C2D35),
         borderRadius: BorderRadius.circular(12),
@@ -387,21 +237,27 @@ class LibrarianDashboardPage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 4),
+              Icon(icon, color: color, size: 20),
             ],
           ),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
               color: color,
-              fontSize: 32,
+              fontSize: 28,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -556,31 +412,23 @@ class LibrarianDashboardPage extends StatelessWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              // Make each nav item flexible so they evenly distribute and avoid overflow
-              Expanded(child: _buildNavItem(Icons.dashboard, "Dashboard", true, () {})),
-              Expanded(
-                child: _buildNavItem(Icons.inventory_2, "Inventory", false, () {
-                  Navigator.pushReplacementNamed(context, '/librarian-inventory');
-                }),
-              ),
-              Expanded(
-                child: _buildNavItem(Icons.assessment, "Reports", false, () {
-                  Navigator.pushReplacementNamed(context, '/librarian-reports');
-                }),
-              ),
-              Expanded(
-                child: _buildNavItem(Icons.request_page, "Requests", false, () {
-                  Navigator.pushReplacementNamed(context, '/librarian-requests');
-                }),
-              ),
-              Expanded(
-                child: _buildNavItem(Icons.person, "Profile", false, () {
-                  Navigator.pushReplacementNamed(context, '/librarian-profile');
-                }),
-              ),
+              _buildNavItem(Icons.dashboard, "Dashboard", true, () {}),
+              _buildNavItem(Icons.inventory_2, "Inventory", false, () {
+                Navigator.pushReplacementNamed(context, '/librarian-inventory');
+              }),
+              _buildNavItem(Icons.assessment, "Reports", false, () {
+                Navigator.pushReplacementNamed(context, '/librarian-reports');
+              }),
+              _buildNavItem(Icons.request_page, "Requests", false, () {
+                Navigator.pushReplacementNamed(context, '/librarian-requests');
+              }),
+              _buildNavItem(Icons.person, "Profile", false, () {
+                Navigator.pushReplacementNamed(context, '/librarian-profile');
+              }),
             ],
           ),
         ),
@@ -594,27 +442,36 @@ class LibrarianDashboardPage extends StatelessWidget {
     bool isActive,
     VoidCallback onTap,
   ) {
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isActive ? const Color(0xFF0A84FF) : Colors.white54,
-            size: 24,
+    return Flexible(
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                color: isActive ? const Color(0xFF0A84FF) : Colors.white54,
+                size: 24,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: isActive ? const Color(0xFF0A84FF) : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? const Color(0xFF0A84FF) : Colors.white54,
-              fontSize: 11,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+
 }

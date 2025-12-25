@@ -12,11 +12,11 @@ class BookImage extends StatelessWidget {
 
   const BookImage(
     this.src, {
-    Key? key,
+    super.key,
     this.width,
     this.height,
     this.fit,
-  }) : super(key: key);
+  });
 
   bool get _isNetwork => src.startsWith('http');
 

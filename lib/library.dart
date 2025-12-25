@@ -84,11 +84,8 @@ class _LibraryPageState extends State<LibraryPage> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset('lib/assets/data_science.png', width: 140, height: 180, fit: BoxFit.cover),
-                ),
-                 const SizedBox(width: 12),
+                // Book cover removed from left of search box per UI request
+                const SizedBox(width: 0),
                  // Search bar + filter button
                  Expanded(
                    child: Column(

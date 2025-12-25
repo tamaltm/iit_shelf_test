@@ -16,6 +16,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
   String? _selectedBook;
   String? _selectedRequestedBook;
   String _pdfUrl = '';
+  bool _appliedRouteArgs = false;
 
   // Use canonical book resources; rotate indices for variety in different pages.
   final existingBooks = [
@@ -69,6 +70,24 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
+    // Apply route arguments (if any) once to preselect tab/book when navigated from Book Details
+    if (!_appliedRouteArgs) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null) {
+        final mode = args['mode'] as String?;
+        final bookTitle = args['bookTitle'] as String?;
+        if (mode == 'update') {
+          // try to select Update Existing tab (index 0) and preselect the book
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _tabController.animateTo(0);
+              if (bookTitle != null) _selectedBook = bookTitle;
+            });
+          });
+        }
+      }
+      _appliedRouteArgs = true;
+    }
     return Scaffold(
       backgroundColor: Colors.black,
   appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),

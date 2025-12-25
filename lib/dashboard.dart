@@ -108,7 +108,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.2),
+                      color: Colors.red.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -226,7 +226,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
             ),
             const SizedBox(height: 12),
             
-            ...borrowedBooks.map((book) => _buildBookCard(book)).toList(),
+            ...borrowedBooks.map((book) => _buildBookCard(book)),
             
             const SizedBox(height: 16),
             
@@ -420,7 +420,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: book.dueColor.withOpacity(0.2),
+                      color: book.dueColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(

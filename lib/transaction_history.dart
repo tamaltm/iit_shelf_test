@@ -275,7 +275,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: transaction['color'].withOpacity(0.2),
+                    color: transaction['color'].withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -313,7 +313,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(transaction['status']).withOpacity(0.2),
+                    color: _getStatusColor(transaction['status']).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(

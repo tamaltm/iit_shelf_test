@@ -235,7 +235,7 @@ class _TeacherDashboardPageState extends State<TeacherDashboardPage> {
             ),
             const SizedBox(height: 12),
             
-            ...borrowedBooks.map((book) => _buildBookCard(book)).toList(),
+            ...borrowedBooks.map((book) => _buildBookCard(book)),
             
             const SizedBox(height: 16),
             

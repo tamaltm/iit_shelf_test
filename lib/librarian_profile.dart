@@ -121,7 +121,7 @@ class LibrarianProfilePage extends StatelessWidget {
     bool isPositive,
   ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: const Color(0xFF2C2D35),
         borderRadius: BorderRadius.circular(12),
@@ -132,26 +132,31 @@ class LibrarianProfilePage extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12.5,
+                  ),
                 ),
               ),
-              Icon(icon, color: color, size: 24),
+              const SizedBox(width: 8),
+              Icon(icon, color: color, size: 22),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Text(
             value,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Row(
             children: [
               Icon(
@@ -160,11 +165,15 @@ class LibrarianProfilePage extends StatelessWidget {
                 size: 14,
               ),
               const SizedBox(width: 4),
-              Text(
-                trend,
-                style: const TextStyle(
-                  color: Colors.green,
-                  fontSize: 11,
+              Flexible(
+                child: Text(
+                  trend,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontSize: 10.5,
+                  ),
                 ),
               ),
             ],

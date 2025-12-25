@@ -5,7 +5,7 @@ import 'reserve_confirm.dart';
 class BookDetailPage extends StatelessWidget {
   final String image, title, author, description;
   final bool available;
-  final bool pdf_available;
+  final bool pdfAvailable;
   // new: role and current borrowed count (frontend demo state)
   final String role;
   final int currentBorrowed;
@@ -17,21 +17,21 @@ class BookDetailPage extends StatelessWidget {
     required this.author,
     required this.description,
     required this.available,
-    this.pdf_available = true,
+    this.pdfAvailable = true,
     this.role = 'Student',
     this.currentBorrowed = 0,
   });
 
   @override
   Widget build(BuildContext context) {
-    Color cardColor = const Color(0xFF22232A);
+    final cardColor = Theme.of(context).cardColor;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
         elevation: 0,
-        title: const Text('Book Details', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: Text('Book Details', style: Theme.of(context).appBarTheme.titleTextStyle ?? const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -42,7 +42,24 @@ class BookDetailPage extends StatelessWidget {
                 padding: const EdgeInsets.all(20),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.asset('lib/assets/data_science.png', height: 300, fit: BoxFit.cover),
+                  child: Builder(builder: (ctx) {
+                    // Use the passed `image` if provided. Support both network URLs and local assets.
+                    final img = (image.trim().isEmpty) ? 'lib/assets/data_science.png' : image;
+                    if (img.startsWith('http')) {
+                      return Image.network(
+                        img,
+                        height: 300,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Image.asset('lib/assets/data_science.png', height: 300, fit: BoxFit.cover),
+                      );
+                    }
+                    return Image.asset(
+                      img,
+                      height: 300,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 96, color: Colors.white70),
+                    );
+                  }),
                 ),
               ),
             ),
@@ -56,17 +73,13 @@ class BookDetailPage extends StatelessWidget {
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    "by $author",
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                  const SizedBox(height: 16),
                   Row(
                     children: [
+                      // Availability pill (keep appearance like before but in a pill)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: available ? Colors.green : Colors.red,
+                          color: available ? const Color(0xFF2E7D32) : Colors.grey,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -75,16 +88,35 @@ class BookDetailPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
+                      // Download PDF pill
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: pdf_available ? Colors.lightBlue : Colors.red,
+                          color: pdfAvailable ? Colors.lightBlue : Colors.red,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          pdf_available ? "Download PDF" : "pdf unavailable",
+                          pdfAvailable ? "Download PDF" : "pdf unavailable",
                           style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Update PDF pill-shaped button (yellow)
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/upload-pdf',
+                            arguments: {'mode': 'update', 'bookTitle': title},
+                          );
+                        },
+                        child: const Text('Update PDF'),
                       ),
                     ],
                   ),
@@ -148,8 +180,8 @@ class BookDetailPage extends StatelessWidget {
                               showDialog(
                                 context: context,
                                 builder: (context) {
-                                  int selectedDays = maxDays;
-                                  String? errorMessage;
+            int selectedDays = maxDays;
+          String errorMessage = '';
                                   final bool atLimit = currentBorrowed >= maxBooks;
 
                                   return StatefulBuilder(builder: (context, setState) {
@@ -188,7 +220,7 @@ class BookDetailPage extends StatelessWidget {
                                           const SizedBox(height: 8),
                                           if (atLimit)
                                             Text('Borrowing limit reached: $currentBorrowed / $maxBooks', style: TextStyle(color: Colors.redAccent)),
-                                          if (errorMessage != null) ...[
+                                          if (errorMessage.isNotEmpty) ...[
                                             const SizedBox(height: 8),
                                             Text(errorMessage, style: TextStyle(color: Colors.redAccent)),
                                           ]

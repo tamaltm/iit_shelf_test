@@ -11,12 +11,9 @@ class FilterPage extends StatefulWidget {
 }
 
 class _FilterPageState extends State<FilterPage> {
-  String? selectedSession;
   String? selectedSemester;
   String? selectedCategory;
   String? selectedAuthor;
-
-  final List<String> sessions = ['2018-19', '2019-20', '2020-21', '2021-22', '2022-23', '2023-24'];
   final List<String> semesters = ['11', '12', '21', '22', '31', '32', '41', '42'];
 
   @override
@@ -33,21 +30,12 @@ class _FilterPageState extends State<FilterPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Session', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: selectedSession,
-              dropdownColor: const Color(0xFF22232A),
-              decoration: InputDecoration(fillColor: const Color(0xFF22232A), filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
-              items: sessions.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-              onChanged: (v) => setState(() => selectedSession = v),
-            ),
-            const SizedBox(height: 16),
+            // Session filter removed per request
 
             const Text('Semester', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: selectedSemester,
+              initialValue: selectedSemester,
               dropdownColor: const Color(0xFF22232A),
               decoration: InputDecoration(fillColor: const Color(0xFF22232A), filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
               items: semesters.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
@@ -58,7 +46,7 @@ class _FilterPageState extends State<FilterPage> {
             const Text('Category', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: selectedCategory,
+              initialValue: selectedCategory,
               dropdownColor: const Color(0xFF22232A),
               decoration: InputDecoration(fillColor: const Color(0xFF22232A), filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
               items: widget.availableCategories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
@@ -69,7 +57,7 @@ class _FilterPageState extends State<FilterPage> {
             const Text('Author', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              value: selectedAuthor,
+              initialValue: selectedAuthor,
               dropdownColor: const Color(0xFF22232A),
               decoration: InputDecoration(fillColor: const Color(0xFF22232A), filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(8))),
               items: widget.availableAuthors.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
@@ -90,7 +78,6 @@ class _FilterPageState extends State<FilterPage> {
                   child: ElevatedButton(
                     onPressed: () {
                       final filters = {
-                        'session': selectedSession,
                         'semester': selectedSemester,
                         'category': selectedCategory,
                         'author': selectedAuthor,

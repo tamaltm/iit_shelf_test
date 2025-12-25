@@ -274,13 +274,13 @@ class _RegisterPageState extends State<RegisterPage> {
                     onPressed: agreed ? () {
                       Navigator.pushReplacementNamed(context, '/dashboard');
                     } : null,
-                    child: Text("Register"),
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       backgroundColor: Colors.blue,
                       foregroundColor: Colors.white,
                       disabledBackgroundColor: Colors.blueGrey,
                     ),
+                    child: Text("Register"),
                   ),
                 ),
                 SizedBox(height: 12),

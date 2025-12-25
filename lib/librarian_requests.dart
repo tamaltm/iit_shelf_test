@@ -230,7 +230,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               Checkbox(
                 value: false,
                 onChanged: (val) {},
-                fillColor: MaterialStateProperty.all(Colors.transparent),
+                fillColor: WidgetStateProperty.all(Colors.transparent),
                 side: const BorderSide(color: Colors.white54),
               ),
               const Text("832(A)", style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -238,7 +238,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               Checkbox(
                 value: false,
                 onChanged: (val) {},
-                fillColor: MaterialStateProperty.all(Colors.transparent),
+                fillColor: WidgetStateProperty.all(Colors.transparent),
                 side: const BorderSide(color: Colors.white54),
               ),
               const Text("834(B)", style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -246,7 +246,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               Checkbox(
                 value: false,
                 onChanged: (val) {},
-                fillColor: MaterialStateProperty.all(Colors.transparent),
+                fillColor: WidgetStateProperty.all(Colors.transparent),
                 side: const BorderSide(color: Colors.white54),
               ),
               const Text("835(C)", style: TextStyle(color: Colors.white, fontSize: 13)),
@@ -579,7 +579,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
         color: const Color(0xFF2C2D35),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, -2),
           ),

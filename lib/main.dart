@@ -116,7 +116,7 @@ class IITShelfApp extends StatelessWidget {
             image: args?['image'] ?? 'https://via.placeholder.com/150',
             description: args?['description'] ?? 'No description available.',
             available: args?['available'] ?? true,
-            pdf_available: args?['pdf_available'] ?? true,
+            pdfAvailable: args?['pdfAvailable'] ?? true,
           );
         },
         '/return-details': (context) {

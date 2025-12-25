@@ -77,7 +77,7 @@ class ReturnedBooksPage extends StatelessWidget {
           ),
         ],
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 2),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
     );
   }
 }
@@ -114,7 +114,7 @@ class _TabButton extends StatelessWidget {
 class ReturnedBookCard extends StatelessWidget {
   final String image, title, author, id, returned;
 
-  const ReturnedBookCard({
+  const ReturnedBookCard({super.key, 
     required this.image,
     required this.title,
     required this.author,

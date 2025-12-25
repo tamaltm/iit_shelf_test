@@ -111,7 +111,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                       Container(
                         padding: EdgeInsets.all(isSmallScreen ? 10 : 12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.2),
+                          color: Colors.red.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
@@ -261,7 +261,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
             ),
             const SizedBox(height: 12),
             
-            ...borrowedBooks.map((book) => _buildBookCard(book)).toList(),
+            ...borrowedBooks.map((book) => _buildBookCard(book)),
             
             const SizedBox(height: 16),
             
@@ -486,7 +486,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: book.dueColor.withOpacity(0.2),
+                    color: book.dueColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(

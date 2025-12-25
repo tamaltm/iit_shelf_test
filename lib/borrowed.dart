@@ -78,7 +78,7 @@ class BorrowedBooksPage extends StatelessWidget {
           ),
         ],
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 2),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
     );
   }
 }
@@ -115,7 +115,7 @@ class _TabButton extends StatelessWidget {
 class BorrowedBookCard extends StatelessWidget {
   final String image, title, author, id, due;
 
-  const BorrowedBookCard({
+  const BorrowedBookCard({super.key, 
     required this.image,
     required this.title,
     required this.author,
