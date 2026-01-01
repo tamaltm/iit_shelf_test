@@ -210,26 +210,52 @@ class _LoginPageState extends State<LoginPage> {
                   onFieldSubmitted: (_) => _handleLogin(),
                 ),
                 const SizedBox(height: 10),
+                // Single row: Remember me (left) + Forgot Password (right) without overflow
                 Row(
                   children: [
-                    Checkbox(
-                      value: false,
-                      onChanged: (_) {},
-                      activeColor: Colors.blueAccent,
-                    ),
-                    const Text(
-                      "Remember me",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Checkbox(
+                            value: false,
+                            onChanged: (_) {},
+                            activeColor: Colors.blueAccent,
+                          ),
+                          const SizedBox(width: 6),
+                          const Flexible(
+                            child: Text(
+                              "Remember me",
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "Forgot Password?",
-                        style: TextStyle(color: Colors.blue),
+                    Flexible(
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 0),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/forgot-password');
+                          },
+                          child: const Text(
+                            "Forgot Password?",
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                            style: TextStyle(color: Colors.blue, fontSize: 13),
+                          ),
+                        ),
                       ),
                     ),
                   ],

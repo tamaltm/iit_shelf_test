@@ -22,6 +22,7 @@ import 'librarian_requests.dart';
 import 'general_notices.dart';
 import 'auth_service.dart';
 import 'director_dashboard.dart';
+import 'forgot_password.dart';
 import 'add_shelf.dart';
 import 'remove_shelf.dart';
 import 'add_book.dart';
@@ -49,11 +50,13 @@ class IITShelfApp extends StatelessWidget {
     return MaterialApp(
       title: 'IITShelf — Digital Library',
       theme: ThemeData.dark(),
-      home: IITShelfHome(), // Now shows login form directly
+      // Use the dedicated LoginPage as the initial screen
+      home: const LoginPage(),
       debugShowCheckedModeBanner: false,
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
+        '/forgot-password': (context) => const ForgotPasswordPage(),
         '/dashboard': (context) => const ProfessorDashboardPage(),
         '/teacher-dashboard': (context) => const TeacherDashboardPage(),
   '/teacher-profile': (context) => const TeacherProfilePage(),
@@ -344,6 +347,23 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                 ),
                 const SizedBox(height: 10),
                 
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {},
+                    child: const Text(
+                      "Forgot Password?",
+                      style: TextStyle(color: Colors.blue),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                
                 Row(
                   children: [
                     Checkbox(
@@ -351,19 +371,12 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                       onChanged: (_) {},
                       activeColor: Colors.blueAccent,
                     ),
+                    const SizedBox(width: 6),
                     const Text(
                       "Remember me",
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 14,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        "Forgot Password?",
-                        style: TextStyle(color: Colors.blue),
                       ),
                     ),
                   ],
