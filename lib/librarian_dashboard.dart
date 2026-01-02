@@ -114,7 +114,7 @@ class LibrarianDashboardPage extends StatelessWidget {
                   "Search books",
                   Icons.search,
                   () {
-                    Navigator.pushNamed(context, '/library');
+                    Navigator.pushNamed(context, '/library', arguments: {'userRole': 'librarian'});
                   },
                 ),
                 _buildActionButton(

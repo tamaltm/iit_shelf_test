@@ -202,7 +202,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           ),
         ],
   ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 3),
+  bottomNavigationBar: RoleBottomNav(currentIndex: 3, role: widget.userRole),
     );
   }
 

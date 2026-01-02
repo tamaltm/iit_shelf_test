@@ -3,12 +3,13 @@ import 'auth_service.dart';
 
 class RoleBottomNav extends StatelessWidget {
   final int currentIndex;
+  final String? role;
 
-  const RoleBottomNav({super.key, required this.currentIndex});
+  const RoleBottomNav({super.key, required this.currentIndex, this.role});
 
   @override
   Widget build(BuildContext context) {
-    final role = (AuthService.getCurrentUserRole() ?? 'student').toLowerCase();
+    final role = (this.role ?? AuthService.getCurrentUserRole() ?? 'student').toLowerCase();
 
     if (role == 'director') {
       return _buildDirectorNav(context);
@@ -51,7 +52,18 @@ class RoleBottomNav extends StatelessWidget {
           }
           if (index == 1) Navigator.pushReplacementNamed(context, '/my-books');
           if (index == 2) Navigator.pushReplacementNamed(context, '/payment');
-          if (index == 3) Navigator.pushReplacementNamed(context, '/profile');
+          if (index == 3) {
+            // This nav is only for students and teachers, but add safety check
+            if (role == 'teacher') {
+              Navigator.pushReplacementNamed(context, '/teacher-profile');
+            } else if (role == 'librarian') {
+              Navigator.pushReplacementNamed(context, '/librarian-profile');
+            } else if (role == 'director') {
+              Navigator.pushReplacementNamed(context, '/director-profile');
+            } else {
+              Navigator.pushReplacementNamed(context, '/profile');
+            }
+          }
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
@@ -117,11 +129,11 @@ class RoleBottomNav extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: Row(
             children: [
-              Expanded(child: _navItem(context, Icons.dashboard, 'Dashboard', true, () => Navigator.pushReplacementNamed(context, '/librarian-dashboard'))),
-              Expanded(child: _navItem(context, Icons.inventory_2, 'Inventory', false, () => Navigator.pushReplacementNamed(context, '/librarian-inventory'))),
-              Expanded(child: _navItem(context, Icons.assessment, 'Reports', false, () => Navigator.pushReplacementNamed(context, '/librarian-reports'))),
-              Expanded(child: _navItem(context, Icons.request_page, 'Requests', false, () => Navigator.pushReplacementNamed(context, '/librarian-requests'))),
-              Expanded(child: _navItem(context, Icons.person, 'Profile', false, () => Navigator.pushReplacementNamed(context, '/librarian-profile'))),
+              Expanded(child: _navItem(context, Icons.dashboard, 'Dashboard', currentIndex == 0, () => Navigator.pushReplacementNamed(context, '/librarian-dashboard'))),
+              Expanded(child: _navItem(context, Icons.inventory_2, 'Inventory', currentIndex == 1, () => Navigator.pushReplacementNamed(context, '/librarian-inventory'))),
+              Expanded(child: _navItem(context, Icons.assessment, 'Reports', currentIndex == 2, () => Navigator.pushReplacementNamed(context, '/librarian-reports'))),
+              Expanded(child: _navItem(context, Icons.request_page, 'Requests', currentIndex == 3, () => Navigator.pushReplacementNamed(context, '/librarian-requests'))),
+              Expanded(child: _navItem(context, Icons.person, 'Profile', currentIndex == 4, () => Navigator.pushReplacementNamed(context, '/librarian-profile'))),
             ],
           ),
         ),

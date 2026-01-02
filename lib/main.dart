@@ -442,13 +442,13 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _buildDemoCredential("Student", "student@nstu.edu.bd"),
-                      _buildDemoCredential("Teacher", "teacher@nstu.edu.bd"),
-                      _buildDemoCredential("Librarian", "librarian@nstu.edu.bd"),
-                      _buildDemoCredential("Director", "director@nstu.edu.bd"),
+                      _buildDemoCredential("Student", "student"),
+                      _buildDemoCredential("Teacher", "teacher"),
+                      _buildDemoCredential("Librarian", "librarian"),
+                      _buildDemoCredential("Director", "director"),
                       const SizedBox(height: 4),
                       Text(
-                        "Password: password123",
+                        "Password: 123",
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 11,

@@ -34,7 +34,7 @@ class TeacherProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              "teacher@nstu.edu.bd",
+              "teacher",
               style: TextStyle(color: Colors.blue, fontSize: 14),
             ),
             const SizedBox(height: 24),
@@ -95,7 +95,7 @@ class TeacherProfilePage extends StatelessWidget {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 4),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 3, role: 'teacher'),
     );
   }
 }

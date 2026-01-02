@@ -233,7 +233,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 2),
+  bottomNavigationBar: RoleBottomNav(currentIndex: 2, role: widget.userRole),
     );
   }
 

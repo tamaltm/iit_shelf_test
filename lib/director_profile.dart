@@ -100,7 +100,7 @@ class DirectorProfilePage extends StatelessWidget {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 4),
+  bottomNavigationBar: const RoleBottomNav(currentIndex: 4, role: 'director'),
     );
   }
 }

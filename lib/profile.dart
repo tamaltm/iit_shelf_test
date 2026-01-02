@@ -21,12 +21,12 @@ class ProfilePage extends StatelessWidget {
 
   final displayRoleLabel = (role ?? 'student').toUpperCase();
   final displayEmail = role == 'teacher'
-    ? 'teacher@nstu.edu.bd'
+    ? 'teacher'
     : role == 'librarian'
-      ? 'librarian@nstu.edu.bd'
+      ? 'librarian'
       : role == 'director'
-        ? 'director@nstu.edu.bd'
-        : 'tamal.mazumder@nstu.edu.bd';
+        ? 'director'
+        : 'student';
 
   return Scaffold(
     backgroundColor: Colors.black,

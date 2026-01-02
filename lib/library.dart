@@ -158,7 +158,7 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
         ],
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
+  bottomNavigationBar: RoleBottomNav(currentIndex: 0, role: widget.userRole),
     );
   }
 

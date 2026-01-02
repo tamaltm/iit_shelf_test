@@ -33,6 +33,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     if (AuthService.validateLogin(email, password)) {
+      AuthService.setCurrentUser(email); // Set the current user
       final role = AuthService.getUserRole(email);
       final route = AuthService.getDefaultRouteForRole(role!);
       
@@ -317,12 +318,12 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      _buildDemoCredential("Student", "student@nstu.edu.bd"),
-                      _buildDemoCredential("Teacher", "teacher@nstu.edu.bd"),
-                      _buildDemoCredential("Librarian", "librarian@nstu.edu.bd"),
+                      _buildDemoCredential("Student", "student"),
+                      _buildDemoCredential("Teacher", "teacher"),
+                      _buildDemoCredential("Librarian", "librarian"),
                       const SizedBox(height: 4),
                       Text(
-                        "Password: password123",
+                        "Password: 123",
                         style: TextStyle(
                           color: Colors.grey[400],
                           fontSize: 11,

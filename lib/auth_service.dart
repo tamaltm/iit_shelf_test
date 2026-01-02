@@ -3,27 +3,14 @@ import 'dart:math';
 class AuthService {
   // Map emails to roles for demo purposes
   static final Map<String, String> _userRoles = {
-    // Students
-    'student@nstu.edu.bd': 'student',
-    'john.doe@nstu.edu.bd': 'student',
-    'jane.smith@nstu.edu.bd': 'student',
-    
-    // Teachers
-    'teacher@nstu.edu.bd': 'teacher',
-    'prof.wilson@nstu.edu.bd': 'teacher',
-    'dr.anderson@nstu.edu.bd': 'teacher',
-    
-    // Librarians
-    'librarian@nstu.edu.bd': 'librarian',
-    'lib.admin@nstu.edu.bd': 'librarian',
-    
-    // Directors
-    'director@nstu.edu.bd': 'director',
-    'admin@nstu.edu.bd': 'director',
+    'student': 'student',
+    'teacher': 'teacher',
+    'librarian': 'librarian',
+    'director': 'director',
   };
 
   // Dummy password for all users (for demo)
-  static const String _dummyPassword = 'password123';
+  static const String _dummyPassword = '123';
 
   // Per-user password overrides (for resets in demo)
   static final Map<String, String> _passwordOverrides = {};
