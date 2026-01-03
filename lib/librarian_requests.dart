@@ -62,7 +62,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
                 TextField(
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: "Search by User ID",
+                    hintText: "Search by Name or Email",
                     hintStyle: const TextStyle(color: Colors.white54),
                     prefixIcon: const Icon(Icons.search, color: Colors.white54),
                     filled: true,
@@ -98,7 +98,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
       padding: const EdgeInsets.all(16),
       children: [
         _buildBorrowRequestCard(
-          "123456",
+          "John Doe",
+          "john.doe@example.com",
           "Request to Borrow",
           "Database Management",
           "234612AB",
@@ -113,7 +114,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
       padding: const EdgeInsets.all(16),
       children: [
         _buildReturnRequestCard(
-          "123456",
+          "Sarah Johnson",
+          "sarah.johnson@example.com",
           "Request to Return",
           "Database Management",
           "234612AB",
@@ -129,7 +131,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
       padding: const EdgeInsets.all(16),
       children: [
         _buildReserveRequestCard(
-          "123456",
+          "Mike Chen",
+          "mike.chen@example.com",
           "Joined Queue in 4",
           "Database Management",
           "234612AB",
@@ -137,7 +140,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
         ),
         const SizedBox(height: 12),
         _buildReserveRequestCard(
-          "234561",
+          "Emma Wilson",
+          "emma.wilson@example.com",
           "Joined Queue in 3",
           "Database Management",
           "234612AB",
@@ -152,7 +156,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
       padding: const EdgeInsets.all(16),
       children: [
         _buildAdditionRequestCard(
-          "123456",
+          "Alex Brown",
+          "alex.brown@example.com",
           "Request to Add",
           "System Engineering",
           "2 hours ago",
@@ -162,7 +167,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
   }
 
   Widget _buildBorrowRequestCard(
-    String userId,
+    String userName,
+    String userEmail,
     String requestType,
     String bookName,
     String isbn,
@@ -182,13 +188,25 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               const Icon(Icons.info_outline, color: Color(0xFF0A84FF), size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  "User ID: $userId",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      userEmail,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(
@@ -225,34 +243,6 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Checkbox(
-                value: false,
-                onChanged: (val) {},
-                fillColor: WidgetStateProperty.all(Colors.transparent),
-                side: const BorderSide(color: Colors.white54),
-              ),
-              const Text("832(A)", style: TextStyle(color: Colors.white, fontSize: 13)),
-              const SizedBox(width: 16),
-              Checkbox(
-                value: false,
-                onChanged: (val) {},
-                fillColor: WidgetStateProperty.all(Colors.transparent),
-                side: const BorderSide(color: Colors.white54),
-              ),
-              const Text("834(B)", style: TextStyle(color: Colors.white, fontSize: 13)),
-              const SizedBox(width: 16),
-              Checkbox(
-                value: false,
-                onChanged: (val) {},
-                fillColor: WidgetStateProperty.all(Colors.transparent),
-                side: const BorderSide(color: Colors.white54),
-              ),
-              const Text("835(C)", style: TextStyle(color: Colors.white, fontSize: 13)),
-            ],
-          ),
-          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -280,7 +270,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
   }
 
   Widget _buildReturnRequestCard(
-    String userId,
+    String userName,
+    String userEmail,
     String requestType,
     String bookName,
     String isbn,
@@ -301,13 +292,25 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               const Icon(Icons.info_outline, color: Color(0xFF0A84FF), size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  "User ID: $userId",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      userEmail,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(
@@ -403,7 +406,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
   }
 
   Widget _buildReserveRequestCard(
-    String userId,
+    String userName,
+    String userEmail,
     String queueInfo,
     String bookName,
     String isbn,
@@ -423,13 +427,25 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  "User ID: $userId",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      userEmail,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(
@@ -493,7 +509,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
   }
 
   Widget _buildAdditionRequestCard(
-    String userId,
+    String userName,
+    String userEmail,
     String requestType,
     String bookName,
     String time,
@@ -512,13 +529,25 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               const Icon(Icons.info_outline, color: Color(0xFF0A84FF), size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(
-                  "User ID: $userId",
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 15,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      userName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      userEmail,
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Text(

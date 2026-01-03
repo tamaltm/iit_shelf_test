@@ -11,8 +11,8 @@ class PaymentPage extends StatelessWidget {
     Color cardColor = const Color(0xFF22232A);
 
     return Scaffold(
-      backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -20,7 +20,9 @@ class PaymentPage extends StatelessWidget {
           children: [
             Card(
               color: Colors.red[900],
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -28,17 +30,32 @@ class PaymentPage extends StatelessWidget {
                   children: [
                     const Text(
                       "Outstanding Fines",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     const Text(
                       "BDT 150.00",
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 32),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 32,
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                       "Overdue Books: 2",
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(
+                        color:
+                            Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                            Colors.white70,
+                        fontSize: 14,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     SizedBox(
@@ -49,7 +66,10 @@ class PaymentPage extends StatelessWidget {
                             context: context,
                             builder: (context) => AlertDialog(
                               backgroundColor: cardColor,
-                              title: const Text("Payment Successful", style: TextStyle(color: Colors.white)),
+                              title: const Text(
+                                "Payment Successful",
+                                style: TextStyle(color: Colors.white),
+                              ),
                               content: const Text(
                                 "Your fine of BDT 150.00 has been paid successfully.",
                                 style: TextStyle(color: Colors.white70),
@@ -57,8 +77,13 @@ class PaymentPage extends StatelessWidget {
                               actions: [
                                 ElevatedButton(
                                   onPressed: () => Navigator.pop(context),
-                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                                  child: const Text("OK", style: TextStyle(color: Colors.white)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                  ),
+                                  child: const Text(
+                                    "OK",
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                                 ),
                               ],
                             ),
@@ -68,7 +93,13 @@ class PaymentPage extends StatelessWidget {
                           backgroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        child: const Text("Pay Now", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          "Pay Now",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -78,7 +109,11 @@ class PaymentPage extends StatelessWidget {
             const SizedBox(height: 24),
             const Text(
               "Payment History",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(height: 12),
             PaymentHistoryCard(
@@ -102,7 +137,9 @@ class PaymentPage extends StatelessWidget {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 2), // Fixed index from 3 to 2 for Payments
+      bottomNavigationBar: const RoleBottomNav(
+        currentIndex: 2,
+      ), // Fixed index from 3 to 2 for Payments
     );
   }
 }
@@ -135,9 +172,32 @@ class PaymentHistoryCard extends StatelessWidget {
           ),
           child: const Icon(Icons.check_circle, color: Colors.white),
         ),
-        title: Text(description, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        subtitle: Text(date, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-        trailing: Text(amount, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+        title: Text(
+          description,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        subtitle: Text(
+          date,
+          style: TextStyle(
+            color:
+                Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                Colors.white70,
+            fontSize: 13,
+          ),
+        ),
+        trailing: Text(
+          amount,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
       ),
     );
   }

@@ -132,7 +132,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
   appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
       body: notifications.isEmpty
           ? Center(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import 'theme_service.dart';
 
 class RoleBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -24,18 +25,19 @@ class RoleBottomNav extends StatelessWidget {
   }
 
   Widget _buildStudentTeacherNav(BuildContext context, String role) {
+    final themeService = ThemeService();
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.black,
+      decoration: BoxDecoration(
+        color: themeService.backgroundColor,
         border: Border(
-          top: BorderSide(color: Color(0xFF22232A), width: 1),
+          top: BorderSide(color: themeService.cardBackgroundColor, width: 1),
         ),
       ),
       child: BottomNavigationBar(
-        backgroundColor: Colors.black,
+        backgroundColor: themeService.backgroundColor,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: themeService.textColor,
+        unselectedItemColor: themeService.tertiaryTextColor,
         currentIndex: currentIndex.clamp(0, 3),
         showSelectedLabels: true,
         showUnselectedLabels: true,
@@ -76,19 +78,20 @@ class RoleBottomNav extends StatelessWidget {
   }
 
   Widget _buildDirectorNav(BuildContext context) {
+    final themeService = ThemeService();
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.black,
+      decoration: BoxDecoration(
+        color: themeService.backgroundColor,
         border: Border(
-          top: BorderSide(color: Color(0xFF22232A), width: 1),
+          top: BorderSide(color: themeService.cardBackgroundColor, width: 1),
         ),
       ),
       child: BottomNavigationBar(
-        backgroundColor: Colors.black,
+        backgroundColor: themeService.backgroundColor,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey,
-        currentIndex: currentIndex.clamp(0, 4),
+        selectedItemColor: themeService.textColor,
+        unselectedItemColor: themeService.tertiaryTextColor,
+        currentIndex: currentIndex.clamp(0, 3),
         showSelectedLabels: true,
         showUnselectedLabels: true,
         selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -97,14 +100,12 @@ class RoleBottomNav extends StatelessWidget {
           if (index == 0) Navigator.pushReplacementNamed(context, '/director-dashboard');
           if (index == 1) Navigator.pushReplacementNamed(context, '/director-my-books');
           if (index == 2) Navigator.pushReplacementNamed(context, '/generate-reports', arguments: {'userRole': 'director'});
-          if (index == 3) Navigator.pushReplacementNamed(context, '/transaction-history', arguments: {'userRole': 'director'});
-          if (index == 4) Navigator.pushReplacementNamed(context, '/director-profile');
+          if (index == 3) Navigator.pushReplacementNamed(context, '/director-profile');
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), activeIcon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), activeIcon: Icon(Icons.menu_book), label: 'My Books'),
           BottomNavigationBarItem(icon: Icon(Icons.assessment_outlined), activeIcon: Icon(Icons.assessment), label: 'Reports'),
-          BottomNavigationBarItem(icon: Icon(Icons.history_outlined), activeIcon: Icon(Icons.history), label: 'History'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), activeIcon: Icon(Icons.person), label: 'Profile'),
         ],
       ),
@@ -112,10 +113,11 @@ class RoleBottomNav extends StatelessWidget {
   }
 
   Widget _buildLibrarianNav(BuildContext context) {
+    final themeService = ThemeService();
     // keep current librarian design but ensure consistent behavior
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: themeService.secondaryCardColor,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.3),
@@ -142,14 +144,15 @@ class RoleBottomNav extends StatelessWidget {
   }
 
   Widget _navItem(BuildContext context, IconData icon, String label, bool active, VoidCallback onTap) {
+    final themeService = ThemeService();
     return InkWell(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: active ? const Color(0xFF0A84FF) : Colors.white54, size: 24),
+          Icon(icon, color: active ? const Color(0xFF0A84FF) : themeService.tertiaryTextColor, size: 24),
           const SizedBox(height: 4),
-          Text(label, style: TextStyle(color: active ? const Color(0xFF0A84FF) : Colors.white54, fontSize: 11, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
+          Text(label, style: TextStyle(color: active ? const Color(0xFF0A84FF) : themeService.tertiaryTextColor, fontSize: 11, fontWeight: active ? FontWeight.w600 : FontWeight.normal)),
         ],
       ),
     );

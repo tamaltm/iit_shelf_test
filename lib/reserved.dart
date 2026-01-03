@@ -12,8 +12,8 @@ class ReservedBooksPage extends StatelessWidget {
     Color cardColor = const Color(0xFF22232A);
 
     return Scaffold(
-      backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -42,23 +42,40 @@ class ReservedBooksPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _TabButton(label: "History", active: false, onTap: () => Navigator.pushNamed(context, '/my-books')),
-                _TabButton(label: "Borrowed", active: false, onTap: () => Navigator.pushNamed(context, '/borrowed')),
-                _TabButton(label: "Returned", active: false, onTap: () => Navigator.pushNamed(context, '/returned')),
+                _TabButton(
+                  label: "History",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/my-books'),
+                ),
+                _TabButton(
+                  label: "Borrowed",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/borrowed'),
+                ),
+                _TabButton(
+                  label: "Returned",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/returned'),
+                ),
                 _TabButton(label: "Reserved", active: true, onTap: null),
               ],
             ),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Text("Book History", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+            child: Text(
+              "Book History",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ),
-          const Expanded(
-            child: ReservedBookList(),
-          ),
+          const Expanded(child: ReservedBookList()),
         ],
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
     );
   }
 }
@@ -100,7 +117,8 @@ class ReservedBookList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8),
       children: const [
         ReservedBookCard(
-          image: "https://cdn.pixabay.com/photo/2015/11/19/21/10/brain-1052048_1280.jpg",
+          image:
+              "https://cdn.pixabay.com/photo/2015/11/19/21/10/brain-1052048_1280.jpg",
           title: "The Future of Artificial Intelligence",
           author: "Jane Smith",
           expected: "Expected: 9/11/2025",
@@ -138,23 +156,55 @@ class ReservedBookCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                            child: BookImage(image, width: 54, height: 60, fit: BoxFit.cover),
+                  child: BookImage(
+                    image,
+                    width: 54,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(author, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        author,
+                        style: TextStyle(
+                          color:
+                              Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                              Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                       const SizedBox(height: 3),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.brown,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(expected, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        child: Text(
+                          expected,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -173,29 +223,50 @@ class ReservedBookCard extends StatelessWidget {
                         builder: (BuildContext context) {
                           return AlertDialog(
                             backgroundColor: const Color(0xFF22232A),
-                            title: const Text('Cancel Reservation', style: TextStyle(color: Colors.white)),
-                            content: Text('Are you sure you want to cancel your reservation for "$title"?', style: const TextStyle(color: Colors.white70)),
+                            title: const Text(
+                              'Cancel Reservation',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            content: Text(
+                              'Are you sure you want to cancel your reservation for "$title"?',
+                              style: const TextStyle(color: Colors.white70),
+                            ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
-                                child: const Text('No', style: TextStyle(color: Colors.grey)),
+                                child: const Text(
+                                  'No',
+                                  style: TextStyle(color: Colors.grey),
+                                ),
                               ),
                               TextButton(
                                 onPressed: () {
                                   Navigator.pop(context);
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Reservation for "$title" has been cancelled')),
+                                    SnackBar(
+                                      content: Text(
+                                        'Reservation for "$title" has been cancelled',
+                                      ),
+                                    ),
                                   );
                                 },
-                                child: const Text('Yes', style: TextStyle(color: Colors.red)),
+                                child: const Text(
+                                  'Yes',
+                                  style: TextStyle(color: Colors.red),
+                                ),
                               ),
                             ],
                           );
                         },
                       );
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: const Text("Cancel Queue", style: TextStyle(color: Colors.white)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text(
+                      "Cancel Queue",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ],
@@ -219,10 +290,15 @@ class ReservedBookCard extends StatelessWidget {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).scaffoldBackgroundColor,
                       side: const BorderSide(color: Colors.white, width: 1.5),
                     ),
-                    child: const Text("Details", style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      "Details",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ],

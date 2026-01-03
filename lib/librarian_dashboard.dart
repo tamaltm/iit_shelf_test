@@ -8,9 +8,7 @@ class LibrarianDashboardPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
-      appBar: const CustomAppBar(
-        userRole: 'librarian',
-      ),
+      appBar: const CustomAppBar(userRole: 'librarian'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
         child: Column(
@@ -25,24 +23,28 @@ class LibrarianDashboardPage extends StatelessWidget {
               childAspectRatio: 1.3,
               children: [
                 _buildStatCard(
+                  context,
                   "Total Books",
                   "450",
                   Icons.menu_book,
                   Colors.blue,
                 ),
                 _buildStatCard(
+                  context,
                   "Pending Returns",
                   "28",
                   Icons.hourglass_empty,
                   Colors.red,
                 ),
                 _buildStatCard(
+                  context,
                   "Pending Requests",
                   "7",
                   Icons.calendar_today,
                   Colors.red,
                 ),
                 _buildStatCard(
+                  context,
                   "Fines Collected Today",
                   "300",
                   Icons.account_balance_wallet,
@@ -50,44 +52,53 @@ class LibrarianDashboardPage extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Pending Tasks
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
+                color: Theme.of(context).cardColor.withOpacity(0.8),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Pending Tasks",
                     style: TextStyle(
-                      color: Colors.white,
+                      color:
+                          Theme.of(context).textTheme.bodyLarge?.color ??
+                          Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildTaskItem("Return Approvals", 7, Colors.red),
+                  _buildTaskItem(context, "Return Approvals", 7, Colors.red),
                   const SizedBox(height: 12),
-                  _buildTaskItem("New Book Requests", 3, Colors.blue),
+                  _buildTaskItem(context, "New Book Requests", 3, Colors.blue),
                   const SizedBox(height: 12),
-                  _buildTaskItem("Payment Verifications", 2, Colors.green),
+                  _buildTaskItem(
+                    context,
+                    "Payment Verifications",
+                    2,
+                    Colors.green,
+                  ),
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Quick Actions
-            const Text(
+            Text(
               "Quick Actions",
               style: TextStyle(
-                color: Colors.white,
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -109,14 +120,13 @@ class LibrarianDashboardPage extends StatelessWidget {
                     Navigator.pushNamed(context, '/librarian-inventory');
                   },
                 ),
-                _buildActionButton(
-                  context,
-                  "Search books",
-                  Icons.search,
-                  () {
-                    Navigator.pushNamed(context, '/library', arguments: {'userRole': 'librarian'});
-                  },
-                ),
+                _buildActionButton(context, "Search books", Icons.search, () {
+                  Navigator.pushNamed(
+                    context,
+                    '/library',
+                    arguments: {'userRole': 'librarian'},
+                  );
+                }),
                 _buildActionButton(
                   context,
                   "Transaction History",
@@ -141,14 +151,9 @@ class LibrarianDashboardPage extends StatelessWidget {
                     );
                   },
                 ),
-                _buildActionButton(
-                  context,
-                  "Request New Book",
-                  Icons.book,
-                  () {
-                    Navigator.pushNamed(context, '/request-book-details');
-                  },
-                ),
+                _buildActionButton(context, "Request New Book", Icons.book, () {
+                  Navigator.pushNamed(context, '/request-book-details');
+                }),
                 _buildActionButton(
                   context,
                   "Upload PDF",
@@ -159,53 +164,60 @@ class LibrarianDashboardPage extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Recent Activity Feed
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
+                color: Theme.of(context).cardColor.withOpacity(0.8),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Recent Activity Feed",
                     style: TextStyle(
-                      color: Colors.white,
+                      color:
+                          Theme.of(context).textTheme.bodyLarge?.color ??
+                          Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
                     ),
                   ),
                   const SizedBox(height: 16),
                   _buildActivityItem(
+                    context,
                     "2 min ago",
                     'User Sarah B. borrowed "The Complete Gui..."',
                     Icons.menu_book,
                     Colors.blue,
                   ),
                   _buildActivityItem(
+                    context,
                     "10 min ago",
                     'User John D. returned "Database Manage..."',
                     Icons.check_circle,
                     Colors.green,
                   ),
                   _buildActivityItem(
+                    context,
                     "30 min ago",
                     "User Alex L. paid TK 20.00 fine",
                     Icons.payment,
                     Colors.red,
                   ),
                   _buildActivityItem(
+                    context,
                     "1 hour ago",
                     'User Maria G. borrowed "System Engineer..."',
                     Icons.menu_book,
                     Colors.blue,
                   ),
                   _buildActivityItem(
+                    context,
                     "2 hours ago",
                     'User David P. requested for addition "Sapi..."',
                     Icons.add_circle,
@@ -214,7 +226,7 @@ class LibrarianDashboardPage extends StatelessWidget {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 20),
           ],
         ),
@@ -223,11 +235,17 @@ class LibrarianDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    BuildContext context,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -240,8 +258,12 @@ class LibrarianDashboardPage extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                        Colors.white70,
                     fontSize: 12,
                   ),
                   maxLines: 2,
@@ -266,11 +288,16 @@ class LibrarianDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildTaskItem(String title, int count, Color color) {
+  Widget _buildTaskItem(
+    BuildContext context,
+    String title,
+    int count,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1B1E),
+        color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -278,8 +305,9 @@ class LibrarianDashboardPage extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color:
+                  Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white,
               fontSize: 15,
             ),
           ),
@@ -291,8 +319,10 @@ class LibrarianDashboardPage extends StatelessWidget {
             ),
             child: Text(
               count.toString(),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
@@ -328,8 +358,10 @@ class LibrarianDashboardPage extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -341,6 +373,7 @@ class LibrarianDashboardPage extends StatelessWidget {
   }
 
   Widget _buildActivityItem(
+    BuildContext context,
     String time,
     String description,
     IconData icon,
@@ -356,7 +389,11 @@ class LibrarianDashboardPage extends StatelessWidget {
             height: 8,
             margin: const EdgeInsets.only(top: 6),
             decoration: BoxDecoration(
-              color: Colors.white54,
+              color:
+                  Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withOpacity(0.54) ??
+                  Colors.white54,
               shape: BoxShape.circle,
             ),
           ),
@@ -367,8 +404,12 @@ class LibrarianDashboardPage extends StatelessWidget {
               children: [
                 Text(
                   time,
-                  style: const TextStyle(
-                    color: Colors.white54,
+                  style: TextStyle(
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.54) ??
+                        Colors.white54,
                     fontSize: 12,
                   ),
                 ),
@@ -382,8 +423,10 @@ class LibrarianDashboardPage extends StatelessWidget {
                         description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).textTheme.bodyLarge?.color ??
+                              Colors.white,
                           fontSize: 14,
                         ),
                       ),
@@ -401,7 +444,7 @@ class LibrarianDashboardPage extends StatelessWidget {
   Widget _buildBottomNav(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
@@ -473,5 +516,4 @@ class LibrarianDashboardPage extends StatelessWidget {
       ),
     );
   }
-
 }

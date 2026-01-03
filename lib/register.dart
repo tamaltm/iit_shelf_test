@@ -8,7 +8,6 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
-  bool agreed = false;
   double passwordStrength = 0;
   String passwordError = "";
 
@@ -64,48 +63,29 @@ class _RegisterPageState extends State<RegisterPage> {
                   child: Text(
                     "IITShelf",
                     style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 24,
-                        color: Colors.white),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 24,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
                 SizedBox(height: 22),
                 Text(
                   "Create Your Account",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold),
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(height: 18),
                 Text(
-                  "Full Name",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15),
-                ),
-                SizedBox(height: 6),
-                TextFormField(
-                  style: TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.black,
-                    hintText: 'Enter your full name',
-                    hintStyle: TextStyle(color: Colors.grey[500]),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      borderSide: BorderSide(color: Colors.grey),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 14),
-                Text(
                   "Email",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 SizedBox(height: 6),
                 TextFormField(
@@ -126,9 +106,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 Text(
                   "Phone Number",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 SizedBox(height: 6),
                 TextFormField(
@@ -142,13 +123,16 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: Text(
                         "+880",
                         style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    prefixIconConstraints:
-                        BoxConstraints(minWidth: 60, minHeight: 0),
+                    prefixIconConstraints: BoxConstraints(
+                      minWidth: 60,
+                      minHeight: 0,
+                    ),
                     hintText: 'Your phone number',
                     hintStyle: TextStyle(color: Colors.grey[500]),
                     border: OutlineInputBorder(
@@ -161,9 +145,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 Text(
                   "Password",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 SizedBox(height: 6),
                 TextFormField(
@@ -189,7 +174,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       child: LinearProgressIndicator(
                         value: passwordStrength,
                         backgroundColor: Colors.grey[800],
-                        color: passwordStrength < 0.5 ? Colors.red : Colors.green,
+                        color: passwordStrength < 0.5
+                            ? Colors.red
+                            : Colors.green,
                         minHeight: 6,
                       ),
                     ),
@@ -201,18 +188,20 @@ class _RegisterPageState extends State<RegisterPage> {
                     child: Text(
                       passwordError,
                       style: TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600),
+                        color: Colors.redAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 SizedBox(height: 14),
                 Text(
                   "Confirm Password",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 15),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
                 SizedBox(height: 6),
                 TextFormField(
@@ -230,50 +219,12 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 SizedBox(height: 18),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: agreed,
-                      activeColor: Colors.blueAccent,
-                      onChanged: (value) {
-                        setState(() {
-                          agreed = value ?? false;
-                        });
-                      },
-                    ),
-                    Flexible(
-                      child: Wrap(
-                        children: [
-                          Text(
-                            "I agree to the ",
-                            style: TextStyle(color: Colors.white, fontSize: 13),
-                          ),
-                          GestureDetector(
-                            onTap: () {}, // Add your link handler
-                            child: Text(
-                              "Terms & Conditions",
-                              style: TextStyle(
-                                  color: Colors.blue,
-                                  fontSize: 13,
-                                  decoration: TextDecoration.underline),
-                            ),
-                          ),
-                          Text(
-                            " and Privacy Policy.",
-                            style: TextStyle(color: Colors.white, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: agreed ? () {
+                    onPressed: () {
                       Navigator.pushReplacementNamed(context, '/dashboard');
-                    } : null,
+                    },
                     style: ElevatedButton.styleFrom(
                       padding: EdgeInsets.symmetric(vertical: 12),
                       backgroundColor: Colors.blue,
@@ -287,12 +238,18 @@ class _RegisterPageState extends State<RegisterPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Already have an account? ", style: TextStyle(color: Colors.grey[400])),
+                    Text(
+                      "Already have an account? ",
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.pushReplacementNamed(context, '/login');
                       },
-                      child: Text("Login", style: TextStyle(color: Colors.blue)),
+                      child: Text(
+                        "Login",
+                        style: TextStyle(color: Colors.blue),
+                      ),
                     ),
                   ],
                 ),

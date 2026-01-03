@@ -30,50 +30,49 @@ class ProfessorDashboardPage extends StatefulWidget {
 }
 
 class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
-    // build small sets from shared resources, rotated
-    final borrowedBooks = [
-      Book(
-        image: bookResources[0]['image']!,
-        title: bookResources[0]['title']!,
-        author: bookResources[0]['author']!,
-        dueLabel: 'Due: 2024-12-30',
-        dueColor: Colors.orange,
-        id: 'ID: 12345',
-      ),
-      Book(
-        image: bookResources[1]['image']!,
-        title: bookResources[1]['title']!,
-        author: bookResources[1]['author']!,
-        dueLabel: 'Due: 2024-12-25',
-        dueColor: Colors.red,
-        id: 'ID: 12346',
-      ),
-    ];
+  // build small sets from shared resources, rotated
+  final borrowedBooks = [
+    Book(
+      image: bookResources[0]['image']!,
+      title: bookResources[0]['title']!,
+      author: bookResources[0]['author']!,
+      dueLabel: 'Due: 2024-12-30',
+      dueColor: Colors.orange,
+      id: 'ID: 12345',
+    ),
+    Book(
+      image: bookResources[1]['image']!,
+      title: bookResources[1]['title']!,
+      author: bookResources[1]['author']!,
+      dueLabel: 'Due: 2024-12-25',
+      dueColor: Colors.red,
+      id: 'ID: 12346',
+    ),
+  ];
 
-    final recommendedBooks = List<Book>.generate(
-      bookResources.length,
-      (i) => Book(
-        image: bookResources[(i + 2) % bookResources.length]['image']!,
-        title: bookResources[(i + 2) % bookResources.length]['title']!,
-        author: bookResources[(i + 2) % bookResources.length]['author']!,
-        dueLabel: 'Available',
-        dueColor: Colors.green,
-        id: 'ID: ${20000 + i}',
-      ),
-    );
+  final recommendedBooks = List<Book>.generate(
+    bookResources.length,
+    (i) => Book(
+      image: bookResources[(i + 2) % bookResources.length]['image']!,
+      title: bookResources[(i + 2) % bookResources.length]['title']!,
+      author: bookResources[(i + 2) % bookResources.length]['author']!,
+      dueLabel: 'Available',
+      dueColor: Colors.green,
+      id: 'ID: ${20000 + i}',
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Dashboard header removed per request
-            
             Row(
               children: [
                 Expanded(
@@ -96,11 +95,11 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
+                color: Theme.of(context).cardColor.withOpacity(0.8),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -121,19 +120,24 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
+                      children: [
                         Text(
                           "Outstanding Fines",
                           style: TextStyle(
-                            color: Colors.white70,
+                            color:
+                                Theme.of(context).textTheme.bodyMedium?.color
+                                    ?.withOpacity(0.7) ??
+                                Colors.white70,
                             fontSize: 14,
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Text(
                           'BDT 150.00',
                           style: TextStyle(
-                            color: Colors.white,
+                            color:
+                                Theme.of(context).textTheme.bodyLarge?.color ??
+                                Colors.white,
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
                           ),
@@ -164,15 +168,17 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Recommended for You",
                   style: TextStyle(
-                    color: Colors.white,
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -190,7 +196,8 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 250, // Increased height from 240 to 250 to fix overflow error
+              height:
+                  250, // Increased height from 240 to 250 to fix overflow error
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: recommendedBooks.length,
@@ -199,16 +206,18 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                 },
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Currently Borrowed",
                   style: TextStyle(
-                    color: Colors.white,
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
@@ -225,15 +234,17 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             ...borrowedBooks.map((book) => _buildBookCard(book)),
-            
+
             const SizedBox(height: 16),
-            
-            const Text(
+
+            Text(
               "Quick Actions",
               style: TextStyle(
-                color: Colors.white,
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -272,7 +283,10 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                   icon: Icons.call,
                   label: "Contact Librarian",
                   onTap: () {
-                    Navigator.pushNamed(context, '/contact-librarian'); // Updated to navigate to contact librarian page
+                    Navigator.pushNamed(
+                      context,
+                      '/contact-librarian',
+                    ); // Updated to navigate to contact librarian page
                   },
                 ),
               ],
@@ -281,7 +295,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
     );
   }
 
@@ -291,7 +305,17 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
       margin: const EdgeInsets.only(right: 12),
       child: InkWell(
         onTap: () {
-          Navigator.pushNamed(context, '/book-detail');
+          Navigator.pushNamed(
+            context,
+            '/book-detail',
+            arguments: {
+              'title': book.title,
+              'author': book.author,
+              'image': book.image,
+              'description': 'Explore more about ${book.title}.',
+              'available': book.dueColor == Colors.green,
+            },
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Column(
@@ -309,8 +333,10 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
             const SizedBox(height: 8),
             Text(
               book.title,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -320,8 +346,12 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
             const SizedBox(height: 2),
             Text(
               book.author,
-              style: const TextStyle(
-                color: Colors.white60,
+              style: TextStyle(
+                color:
+                    Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                    Colors.white60,
                 fontSize: 11,
               ),
               maxLines: 1,
@@ -333,11 +363,16 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -349,8 +384,10 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
               const Spacer(),
               Text(
                 value,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color:
+                      Theme.of(context).textTheme.bodyLarge?.color ??
+                      Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -360,8 +397,12 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color:
+                  Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                  Colors.white70,
               fontSize: 13,
             ),
           ),
@@ -375,7 +416,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -397,8 +438,10 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
               children: [
                 Text(
                   book.title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
                   ),
@@ -408,8 +451,12 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                 const SizedBox(height: 4),
                 Text(
                   book.author,
-                  style: const TextStyle(
-                    color: Colors.white60,
+                  style: TextStyle(
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                        Colors.white60,
                     fontSize: 13,
                   ),
                 ),
@@ -420,7 +467,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                      color: book.dueColor.withValues(alpha: 0.2),
+                    color: book.dueColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -514,11 +561,7 @@ class _QuickButton extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
 
-  const _QuickButton({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _QuickButton({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -528,7 +571,7 @@ class _QuickButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2C2D35),
+          color: Theme.of(context).cardColor.withOpacity(0.8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -539,8 +582,10 @@ class _QuickButton extends StatelessWidget {
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),

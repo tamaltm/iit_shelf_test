@@ -22,7 +22,7 @@ class DirectorBottomNav extends StatelessWidget {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.grey,
-        currentIndex: currentIndex,
+        currentIndex: currentIndex.clamp(0, 3),
         showSelectedLabels: true,
         showUnselectedLabels: true,
         selectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -39,12 +39,6 @@ class DirectorBottomNav extends StatelessWidget {
               arguments: {'userRole': 'director'},
             );
           } else if (index == 3) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/transaction-history',
-              arguments: {'userRole': 'director'},
-            );
-          } else if (index == 4) {
             Navigator.pushReplacementNamed(context, '/director-profile');
           }
         },
@@ -63,11 +57,6 @@ class DirectorBottomNav extends StatelessWidget {
             icon: Icon(Icons.assessment_outlined),
             activeIcon: Icon(Icons.assessment),
             label: "Reports",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.history_outlined),
-            activeIcon: Icon(Icons.history),
-            label: "History",
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_outline),

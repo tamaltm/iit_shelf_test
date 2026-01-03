@@ -3,16 +3,24 @@ import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
 import 'auth_service.dart';
 import 'book_image.dart';
+import 'theme_service.dart';
 
-class DirectorProfilePage extends StatelessWidget {
+class DirectorProfilePage extends StatefulWidget {
   const DirectorProfilePage({super.key});
 
   @override
+  State<DirectorProfilePage> createState() => _DirectorProfilePageState();
+}
+
+class _DirectorProfilePageState extends State<DirectorProfilePage> {
+  final ThemeService _themeService = ThemeService();
+
+  @override
   Widget build(BuildContext context) {
-    Color cardColor = const Color(0xFF22232A);
+    Color cardColor = _themeService.cardBackgroundColor;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: _themeService.backgroundColor,
       appBar: const CustomAppBar(userRole: 'director'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -33,9 +41,9 @@ class DirectorProfilePage extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Director",
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+              style: TextStyle(color: _themeService.secondaryTextColor, fontSize: 16),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -59,6 +67,24 @@ class DirectorProfilePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            Card(
+              color: cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: const Icon(Icons.brightness_6, color: Colors.blue),
+                title: Text('Dark Mode', style: TextStyle(color: _themeService.textColor, fontWeight: FontWeight.w500)),
+                trailing: Switch(
+                  value: _themeService.isDarkMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _themeService.toggleTheme();
+                    });
+                  },
+                  activeThumbColor: Colors.blue,
+                ),
+              ),
+            ),
             ProfileMenuItem(
               icon: Icons.person,
               title: "Edit Profile",

@@ -3,14 +3,22 @@ import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
 import 'book_image.dart';
 import 'auth_service.dart';
+import 'theme_service.dart';
 
-class LibrarianProfilePage extends StatelessWidget {
+class LibrarianProfilePage extends StatefulWidget {
   const LibrarianProfilePage({super.key});
+
+  @override
+  State<LibrarianProfilePage> createState() => _LibrarianProfilePageState();
+}
+
+class _LibrarianProfilePageState extends State<LibrarianProfilePage> {
+  final ThemeService _themeService = ThemeService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1B1E),
+      backgroundColor: _themeService.backgroundColor,
       appBar: const CustomAppBar(userRole: 'librarian'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -93,6 +101,24 @@ class LibrarianProfilePage extends StatelessWidget {
             ),
 
             const SizedBox(height: 20),
+            Card(
+              color: _themeService.secondaryCardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: const Icon(Icons.brightness_6, color: Colors.blue),
+                title: Text('Dark Mode', style: TextStyle(color: _themeService.textColor, fontWeight: FontWeight.w500)),
+                trailing: Switch(
+                  value: _themeService.isDarkMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _themeService.toggleTheme();
+                    });
+                  },
+                  activeThumbColor: Colors.blue,
+                ),
+              ),
+            ),
             GestureDetector(
               onTap: () => Navigator.pushNamed(context, '/edit-profile'),
               child: Card(

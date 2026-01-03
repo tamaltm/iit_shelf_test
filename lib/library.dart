@@ -77,7 +77,9 @@ class _LibraryPageState extends State<LibraryPage> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-  appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
+      appBar: CustomAppBar(
+        userRole: widget.userRole ?? AuthService.getCurrentUserRole(),
+      ),
       body: Column(
         children: [
           Padding(
@@ -86,62 +88,72 @@ class _LibraryPageState extends State<LibraryPage> {
               children: [
                 // Book cover removed from left of search box per UI request
                 const SizedBox(width: 0),
-                 // Search bar + filter button
-                 Expanded(
-                   child: Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     children: [
-                       TextField(
-                         style: const TextStyle(color: Colors.white),
-                         decoration: InputDecoration(
-                           hintText: 'Search books by title or author',
-                           hintStyle: const TextStyle(color: Colors.white60),
-                           filled: true,
-                           fillColor: cardColor,
-                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                           border: OutlineInputBorder(
-                             borderRadius: BorderRadius.circular(10),
-                             borderSide: BorderSide.none,
-                           ),
-                         ),
-                         onChanged: (v) {
-                           // optionally implement search logic
-                         },
-                       ),
-                       const SizedBox(height: 8),
-                       if (activeFilters != null)
-                         Text(
-                           'Filters: ${activeFilters!['author'] ?? activeFilters!['category'] ?? ''}',
-                           style: const TextStyle(color: Colors.white60),
-                         ),
-                     ],
-                   ),
-                 ),
-                 const SizedBox(width: 12),
-                 // Filter button
-                 GestureDetector(
-                   onTap: () async {
-                     final result = await Navigator.push<Map<String, dynamic>?>(
-                       context,
-                       MaterialPageRoute(
-                         builder: (_) => FilterPage(availableCategories: categories, availableAuthors: authors),
-                       ),
-                     );
-                     if (result != null) {
-                       setState(() {
-                         activeFilters = result;
-                       });
-                     }
-                   },
-                   child: Container(
-                     decoration: BoxDecoration(
-                       color: cardColor,
-                       borderRadius: BorderRadius.circular(12),
-                     ),
-                     padding: const EdgeInsets.all(12),
-                     child: const Icon(Icons.tune, color: Colors.white, size: 22),
-                   ),
-                 ),
+                // Search bar + filter button
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Search books by title or author',
+                          hintStyle: const TextStyle(color: Colors.white60),
+                          filled: true,
+                          fillColor: cardColor,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        onChanged: (v) {
+                          // optionally implement search logic
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      if (activeFilters != null)
+                        Text(
+                          'Filters: ${activeFilters!['author'] ?? activeFilters!['category'] ?? ''}',
+                          style: const TextStyle(color: Colors.white60),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Filter button
+                GestureDetector(
+                  onTap: () async {
+                    final result = await Navigator.push<Map<String, dynamic>?>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => FilterPage(
+                          availableCategories: categories,
+                          availableAuthors: authors,
+                        ),
+                      ),
+                    );
+                    if (result != null) {
+                      setState(() {
+                        activeFilters = result;
+                      });
+                    }
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: const Icon(
+                      Icons.tune,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -158,17 +170,21 @@ class _LibraryPageState extends State<LibraryPage> {
           ),
         ],
       ),
-  bottomNavigationBar: RoleBottomNav(currentIndex: 0, role: widget.userRole),
+      bottomNavigationBar: RoleBottomNav(
+        currentIndex: 0,
+        role: widget.userRole,
+      ),
     );
   }
 
   List<Map<String, dynamic>> _getFilteredBooks() {
     if (activeFilters == null) return books;
-  final category = activeFilters!['category'] as String?;
-  final author = activeFilters!['author'] as String?;
+    final category = activeFilters!['category'] as String?;
+    final author = activeFilters!['author'] as String?;
 
     return books.where((b) {
-      if (author != null && author.isNotEmpty && b['author'] != author) return false;
+      if (author != null && author.isNotEmpty && b['author'] != author)
+        return false;
       if (category != null && category.isNotEmpty && category != 'All') {
         // demo: no category field in mock data — skip unless implemented
       }
@@ -179,9 +195,13 @@ class _LibraryPageState extends State<LibraryPage> {
 
   // Filter chips removed — replaced by dedicated filter page
 
-  Widget _buildBookCard(BuildContext context, Map<String, dynamic> book, Color cardColor) {
+  Widget _buildBookCard(
+    BuildContext context,
+    Map<String, dynamic> book,
+    Color cardColor,
+  ) {
     final bool isEbookOnly = book['isEbookOnly'] ?? false;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -208,8 +228,10 @@ class _LibraryPageState extends State<LibraryPage> {
               children: [
                 Text(
                   book['title'],
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
                     height: 1.3,
@@ -220,8 +242,12 @@ class _LibraryPageState extends State<LibraryPage> {
                 const SizedBox(height: 6),
                 Text(
                   book['author'],
-                  style: const TextStyle(
-                    color: Colors.white60,
+                  style: TextStyle(
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                        Colors.white60,
                     fontSize: 14,
                   ),
                 ),
@@ -232,8 +258,8 @@ class _LibraryPageState extends State<LibraryPage> {
                       book['statusColor'] == Colors.green
                           ? Icons.check_circle
                           : book['statusColor'] == Colors.orange
-                              ? Icons.access_time
-                              : Icons.cancel,
+                          ? Icons.access_time
+                          : Icons.cancel,
                       color: book['statusColor'],
                       size: 15,
                     ),
@@ -261,7 +287,8 @@ class _LibraryPageState extends State<LibraryPage> {
                             image: book['image'],
                             title: book['title'],
                             author: book['author'],
-                            description: 'A comprehensive guide covering the fundamentals and advanced concepts.',
+                            description:
+                                'A comprehensive guide covering the fundamentals and advanced concepts.',
                             available: book['statusColor'] == Colors.green,
                             role: 'Student', // demo: this page is for students
                             currentBorrowed: 1, // demo current borrowed count
@@ -270,8 +297,12 @@ class _LibraryPageState extends State<LibraryPage> {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isEbookOnly ? Colors.white : const Color(0xFF0A84FF),
-                      foregroundColor: isEbookOnly ? Colors.black : Colors.white,
+                      backgroundColor: isEbookOnly
+                          ? Colors.white
+                          : const Color(0xFF0A84FF),
+                      foregroundColor: isEbookOnly
+                          ? Colors.black
+                          : Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -299,14 +330,17 @@ class _LibraryPageState extends State<LibraryPage> {
                             image: book['image'],
                             title: book['title'],
                             author: book['author'],
-                            description: 'A comprehensive guide covering the fundamentals and advanced concepts.',
+                            description:
+                                'A comprehensive guide covering the fundamentals and advanced concepts.',
                             available: book['statusColor'] == Colors.green,
                           ),
                         ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).scaffoldBackgroundColor,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -328,7 +362,11 @@ class _LibraryPageState extends State<LibraryPage> {
           Column(
             children: [
               IconButton(
-                icon: const Icon(Icons.ios_share, color: Colors.white, size: 22),
+                icon: const Icon(
+                  Icons.ios_share,
+                  color: Colors.white,
+                  size: 22,
+                ),
                 onPressed: () {},
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),

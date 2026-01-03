@@ -64,17 +64,16 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return Scaffold(
-      backgroundColor: Colors.black,
-  appBar: const CustomAppBar(userRole: 'director'),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: const CustomAppBar(userRole: 'director'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Dashboard header removed per request
-            
             Row(
               children: [
                 Expanded(
@@ -101,7 +100,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
+                color: Theme.of(context).cardColor.withOpacity(0.8),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
@@ -128,7 +127,13 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                             Text(
                               "Outstanding Fines",
                               style: TextStyle(
-                                color: Colors.white70,
+                                color:
+                                    Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.color
+                                        ?.withOpacity(0.7) ??
+                                    Colors.white70,
                                 fontSize: isSmallScreen ? 12 : 14,
                               ),
                             ),
@@ -136,7 +141,11 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                             Text(
                               'BDT 150.00',
                               style: TextStyle(
-                                color: Colors.white,
+                                color:
+                                    Theme.of(
+                                      context,
+                                    ).textTheme.bodyLarge?.color ??
+                                    Colors.white,
                                 fontSize: isSmallScreen ? 18 : 22,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -198,23 +207,29 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Recommended for You",
                   style: TextStyle(
-                    color: Colors.white,
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
                 ),
                 TextButton(
                   onPressed: () {
-                    Navigator.pushNamed(context, '/library', arguments: {'userRole': 'director'});
+                    Navigator.pushNamed(
+                      context,
+                      '/library',
+                      arguments: {'userRole': 'director'},
+                    );
                   },
                   child: const Text(
                     "View All",
@@ -234,24 +249,30 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 },
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   "Currently Borrowed",
                   style: TextStyle(
-                    color: Colors.white,
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
                   ),
                 ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/borrowed', arguments: {'userRole': 'director'});
-                    },
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/borrowed',
+                      arguments: {'userRole': 'director'},
+                    );
+                  },
                   child: const Text(
                     "View All",
                     style: TextStyle(color: Color(0xFF0A84FF)),
@@ -260,15 +281,17 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             ...borrowedBooks.map((book) => _buildBookCard(book)),
-            
+
             const SizedBox(height: 16),
-            
-            const Text(
+
+            Text(
               "Quick Actions",
               style: TextStyle(
-                color: Colors.white,
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -280,7 +303,9 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               mainAxisSpacing: 12,
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: isSmallScreen ? 3.5 : (screenWidth < 400 ? 1.3 : 1.5),
+              childAspectRatio: isSmallScreen
+                  ? 3.5
+                  : (screenWidth < 400 ? 1.3 : 1.5),
               children: [
                 _QuickButton(
                   icon: Icons.bookmark_rounded,
@@ -344,7 +369,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
           ],
         ),
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
     );
   }
 
@@ -354,7 +379,17 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
       margin: const EdgeInsets.only(right: 12),
       child: InkWell(
         onTap: () {
-          Navigator.pushNamed(context, '/book-detail');
+          Navigator.pushNamed(
+            context,
+            '/book-detail',
+            arguments: {
+              'title': book.title,
+              'author': book.author,
+              'image': book.image,
+              'description': 'Explore more about ${book.title}.',
+              'available': book.dueColor == Colors.green,
+            },
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Column(
@@ -362,18 +397,20 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
-                child: BookImage(
-                  book.image,
-                  width: 140,
-                  height: 180,
-                  fit: BoxFit.cover,
-                ),
+              child: BookImage(
+                book.image,
+                width: 140,
+                height: 180,
+                fit: BoxFit.cover,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               book.title,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color:
+                    Theme.of(context).textTheme.bodyLarge?.color ??
+                    Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -383,8 +420,12 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
             const SizedBox(height: 2),
             Text(
               book.author,
-              style: const TextStyle(
-                color: Colors.white60,
+              style: TextStyle(
+                color:
+                    Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                    Colors.white60,
                 fontSize: 11,
               ),
               maxLines: 1,
@@ -396,11 +437,16 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -412,8 +458,10 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               const Spacer(),
               Text(
                 value,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color:
+                      Theme.of(context).textTheme.bodyLarge?.color ??
+                      Colors.white,
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                 ),
@@ -423,8 +471,12 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white70,
+            style: TextStyle(
+              color:
+                  Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                  Colors.white70,
               fontSize: 13,
             ),
           ),
@@ -436,12 +488,12 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
   Widget _buildBookCard(Book book) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2D35),
+        color: Theme.of(context).cardColor.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -464,7 +516,9 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 Text(
                   book.title,
                   style: TextStyle(
-                    color: Colors.white,
+                    color:
+                        Theme.of(context).textTheme.bodyLarge?.color ??
+                        Colors.white,
                     fontWeight: FontWeight.bold,
                     fontSize: isSmallScreen ? 13 : 15,
                   ),
@@ -475,7 +529,11 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 Text(
                   book.author,
                   style: TextStyle(
-                    color: Colors.white60,
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                        Colors.white60,
                     fontSize: isSmallScreen ? 11 : 13,
                   ),
                 ),
@@ -600,7 +658,7 @@ class _QuickButton extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.all(isSmallScreen ? 12 : 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF2C2D35),
+          color: Theme.of(context).cardColor.withOpacity(0.8),
           borderRadius: BorderRadius.circular(12),
         ),
         child: isSmallScreen
@@ -611,8 +669,10 @@ class _QuickButton extends StatelessWidget {
                   Expanded(
                     child: Text(
                       label,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color:
+                            Theme.of(context).textTheme.bodyLarge?.color ??
+                            Colors.white,
                         fontWeight: FontWeight.w600,
                         fontSize: 14,
                       ),
@@ -628,8 +688,10 @@ class _QuickButton extends StatelessWidget {
                   Text(
                     label,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color:
+                          Theme.of(context).textTheme.bodyLarge?.color ??
+                          Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),

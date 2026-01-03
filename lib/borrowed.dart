@@ -14,8 +14,8 @@ class BorrowedBooksPage extends StatelessWidget {
     Color cardColor = const Color(0xFF22232A);
 
     return Scaffold(
-      backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,16 +44,35 @@ class BorrowedBooksPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _TabButton(label: "History", active: false, onTap: () => Navigator.pushNamed(context, '/my-books')),
+                _TabButton(
+                  label: "History",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/my-books'),
+                ),
                 _TabButton(label: "Borrowed", active: true, onTap: null),
-                _TabButton(label: "Returned", active: false, onTap: () => Navigator.pushNamed(context, '/returned')),
-                _TabButton(label: "Reserved", active: false, onTap: () => Navigator.pushNamed(context, '/reserved')),
+                _TabButton(
+                  label: "Returned",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/returned'),
+                ),
+                _TabButton(
+                  label: "Reserved",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/reserved'),
+                ),
               ],
             ),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Text("Book History", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+            child: Text(
+              "Book History",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ),
           Expanded(
             child: ListView(
@@ -115,7 +134,8 @@ class _TabButton extends StatelessWidget {
 class BorrowedBookCard extends StatelessWidget {
   final String image, title, author, id, due;
 
-  const BorrowedBookCard({super.key, 
+  const BorrowedBookCard({
+    super.key,
     required this.image,
     required this.title,
     required this.author,
@@ -140,25 +160,64 @@ class BorrowedBookCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: BookImage(image, width: 54, height: 60, fit: BoxFit.cover),
+                  child: BookImage(
+                    image,
+                    width: 54,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(author, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        author,
+                        style: TextStyle(
+                          color:
+                              Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                              Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                       const SizedBox(height: 3),
-                      Text(due, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13)),
+                      Text(
+                        due,
+                        style: const TextStyle(
+                          color: Colors.green,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(id, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    const Icon(Icons.cloud_download, color: Colors.white, size: 22),
+                    Text(
+                      id,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(
+                      Icons.cloud_download,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ],
                 ),
               ],
@@ -181,8 +240,13 @@ class BorrowedBookCard extends StatelessWidget {
                         ),
                       );
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                    child: const Text("Return", style: TextStyle(color: Colors.black)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    child: const Text(
+                      "Return",
+                      style: TextStyle(color: Colors.black),
+                    ),
                   ),
                 ),
               ],
@@ -204,10 +268,15 @@ class BorrowedBookCard extends StatelessWidget {
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.black,
+                      backgroundColor: Theme.of(
+                        context,
+                      ).scaffoldBackgroundColor,
                       side: const BorderSide(color: Colors.white, width: 1.5),
                     ),
-                    child: const Text("Details", style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      "Details",
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ),
               ],

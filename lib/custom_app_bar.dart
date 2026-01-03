@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'book_image.dart';
+import 'theme_service.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? userName;
@@ -56,9 +57,10 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
   // compute display name once before building widgets
   final displayName = _getDisplayName();
+  final themeService = ThemeService();
 
   return AppBar(
-      backgroundColor: Colors.black,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       elevation: 0,
       automaticallyImplyLeading: false,
       title: Row(
@@ -116,8 +118,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 // Greeting with username
                 Text(
                   'Hello, $displayName',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: themeService.textColor,
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
@@ -131,19 +133,19 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.search, color: Colors.white),
+          icon: Icon(Icons.search, color: themeService.textColor),
           onPressed: () {
             Navigator.pushNamed(context, '/library', arguments: {'userRole': userRole});
           },
         ),
         IconButton(
-          icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          icon: Icon(Icons.notifications_outlined, color: themeService.textColor),
           onPressed: () {
             Navigator.pushNamed(context, '/notifications', arguments: {'userRole': userRole});
           },
         ),
         IconButton(
-          icon: const Icon(Icons.logout_outlined, color: Colors.white),
+          icon: Icon(Icons.logout_outlined, color: themeService.textColor),
           onPressed: () {
             Navigator.pushNamedAndRemoveUntil(
               context,

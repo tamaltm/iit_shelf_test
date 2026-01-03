@@ -39,17 +39,41 @@ import 'teacher_my_books.dart';
 import 'teacher_library.dart';
 import 'director_library.dart';
 import 'librarian_my_books.dart';
+import 'theme_service.dart';
 
 void main() => runApp(IITShelfApp());
 
-class IITShelfApp extends StatelessWidget {
+class IITShelfApp extends StatefulWidget {
   const IITShelfApp({super.key});
+
+  @override
+  State<IITShelfApp> createState() => _IITShelfAppState();
+}
+
+class _IITShelfAppState extends State<IITShelfApp> {
+  final ThemeService _themeService = ThemeService();
+
+  @override
+  void initState() {
+    super.initState();
+    _themeService.addListener(_onThemeChanged);
+  }
+
+  @override
+  void dispose() {
+    _themeService.removeListener(_onThemeChanged);
+    super.dispose();
+  }
+
+  void _onThemeChanged() {
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'IITShelf — Digital Library',
-      theme: ThemeData.dark(),
+      theme: _themeService.currentTheme,
       // Use the dedicated LoginPage as the initial screen
       home: const LoginPage(),
       debugShowCheckedModeBanner: false,

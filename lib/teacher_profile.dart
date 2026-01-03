@@ -3,16 +3,24 @@ import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
 import 'auth_service.dart';
 import 'book_image.dart';
+import 'theme_service.dart';
 
-class TeacherProfilePage extends StatelessWidget {
+class TeacherProfilePage extends StatefulWidget {
   const TeacherProfilePage({super.key});
 
   @override
+  State<TeacherProfilePage> createState() => _TeacherProfilePageState();
+}
+
+class _TeacherProfilePageState extends State<TeacherProfilePage> {
+  final ThemeService _themeService = ThemeService();
+
+  @override
   Widget build(BuildContext context) {
-    Color cardColor = const Color(0xFF22232A);
+    Color cardColor = _themeService.cardBackgroundColor;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: _themeService.backgroundColor,
       appBar: const CustomAppBar(userRole: 'teacher'),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -28,9 +36,9 @@ class TeacherProfilePage extends StatelessWidget {
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               "Teacher",
-              style: TextStyle(color: Colors.white70, fontSize: 16),
+              style: TextStyle(color: _themeService.secondaryTextColor, fontSize: 16),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -54,6 +62,24 @@ class TeacherProfilePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            Card(
+              color: cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: const Icon(Icons.brightness_6, color: Colors.blue),
+                title: Text('Dark Mode', style: TextStyle(color: _themeService.textColor, fontWeight: FontWeight.w500)),
+                trailing: Switch(
+                  value: _themeService.isDarkMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _themeService.toggleTheme();
+                    });
+                  },
+                  activeThumbColor: Colors.blue,
+                ),
+              ),
+            ),
             ProfileMenuItem(
               icon: Icons.person,
               title: "Edit Profile",

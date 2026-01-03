@@ -13,8 +13,8 @@ class ReturnedBooksPage extends StatelessWidget {
     Color cardColor = const Color(0xFF22232A);
 
     return Scaffold(
-      backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -43,16 +43,35 @@ class ReturnedBooksPage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _TabButton(label: "History", active: false, onTap: () => Navigator.pushNamed(context, '/my-books')),
-                _TabButton(label: "Borrowed", active: false, onTap: () => Navigator.pushNamed(context, '/borrowed')),
+                _TabButton(
+                  label: "History",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/my-books'),
+                ),
+                _TabButton(
+                  label: "Borrowed",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/borrowed'),
+                ),
                 _TabButton(label: "Returned", active: true, onTap: null),
-                _TabButton(label: "Reserved", active: false, onTap: () => Navigator.pushNamed(context, '/reserved')),
+                _TabButton(
+                  label: "Reserved",
+                  active: false,
+                  onTap: () => Navigator.pushNamed(context, '/reserved'),
+                ),
               ],
             ),
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            child: Text("Book History", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+            child: Text(
+              "Book History",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
           ),
           Expanded(
             child: ListView(
@@ -114,7 +133,8 @@ class _TabButton extends StatelessWidget {
 class ReturnedBookCard extends StatelessWidget {
   final String image, title, author, id, returned;
 
-  const ReturnedBookCard({super.key, 
+  const ReturnedBookCard({
+    super.key,
     required this.image,
     required this.title,
     required this.author,
@@ -139,23 +159,55 @@ class ReturnedBookCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: BookImage(image, width: 54, height: 60, fit: BoxFit.cover),
+                  child: BookImage(
+                    image,
+                    width: 54,
+                    height: 60,
+                    fit: BoxFit.cover,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                      Text(author, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        author,
+                        style: TextStyle(
+                          color:
+                              Theme.of(
+                                context,
+                              ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                              Colors.white70,
+                          fontSize: 14,
+                        ),
+                      ),
                       const SizedBox(height: 3),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.green,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: Text(returned, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        child: Text(
+                          returned,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -163,7 +215,13 @@ class ReturnedBookCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text("ID:$id", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    Text(
+                      "ID:$id",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -186,8 +244,13 @@ class ReturnedBookCard extends StatelessWidget {
                         },
                       );
                     },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                    child: const Text("Details", style: TextStyle(color: Colors.black)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                    ),
+                    child: const Text(
+                      "Details",
+                      style: TextStyle(color: Colors.black),
+                    ),
                   ),
                 ),
               ],

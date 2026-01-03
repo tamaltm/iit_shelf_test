@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
+import 'theme_service.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
   @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  final ThemeService _themeService = ThemeService();
+
+  @override
   Widget build(BuildContext context) {
-    Color cardColor = const Color(0xFF22232A);
+    Color cardColor = _themeService.cardBackgroundColor;
 
   final role = AuthService.getCurrentUserRole();
   final displayName = role == 'teacher'
@@ -29,7 +37,7 @@ class ProfilePage extends StatelessWidget {
         : 'student';
 
   return Scaffold(
-    backgroundColor: Colors.black,
+    backgroundColor: _themeService.backgroundColor,
     appBar: CustomAppBar(userRole: role),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -46,12 +54,12 @@ class ProfilePage extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               displayName,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 24),
+              style: TextStyle(color: _themeService.textColor, fontWeight: FontWeight.bold, fontSize: 24),
             ),
             const SizedBox(height: 4),
             Text(
               displayRoleLabel,
-              style: const TextStyle(color: Colors.white70, fontSize: 16),
+              style: TextStyle(color: _themeService.secondaryTextColor, fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
@@ -75,6 +83,24 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 20),
+            Card(
+              color: cardColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListTile(
+                leading: const Icon(Icons.brightness_6, color: Colors.blue),
+                title: Text('Dark Mode', style: TextStyle(color: _themeService.textColor, fontWeight: FontWeight.w500)),
+                trailing: Switch(
+                  value: _themeService.isDarkMode,
+                  onChanged: (value) {
+                    setState(() {
+                      _themeService.toggleTheme();
+                    });
+                  },
+                  activeThumbColor: Colors.blue,
+                ),
+              ),
+            ),
             ProfileMenuItem(
               icon: Icons.person,
               title: "Edit Profile",

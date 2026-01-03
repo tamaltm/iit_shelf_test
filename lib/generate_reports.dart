@@ -17,6 +17,45 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
   String endDate = "2023-06-30";
   String selectedSemester = "All Semester";
   String selectedSession = "All Sessions";
+  final List<Map<String, String>> activityItems = [
+    {
+      'type': 'Borrow',
+      'book': 'Introduction to Quantum Computing',
+      'user': 'John Doe',
+      'id': '12345',
+      'date': '2024-01-15',
+      'time': '10:30 AM',
+      'status': 'Completed',
+    },
+    {
+      'type': 'Return',
+      'book': 'Database Management Systems',
+      'user': 'Sarah Johnson',
+      'id': '12346',
+      'date': '2024-01-14',
+      'time': '02:15 PM',
+      'status': 'Completed',
+    },
+    {
+      'type': 'Fine Payment',
+      'book': 'Introduction to Data Science',
+      'user': 'Alex Smith',
+      'id': '23457',
+      'date': '2024-01-14',
+      'time': '11:45 AM',
+      'status': 'Paid',
+      'amount': 'BDT 50.00',
+    },
+    {
+      'type': 'Reservation',
+      'book': 'Artificial Intelligence',
+      'user': 'Emily Davis',
+      'id': '12348',
+      'date': '2024-01-13',
+      'time': '09:20 AM',
+      'status': 'Active',
+    },
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -70,9 +109,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildDatePicker(startDate, (date) {
-                          setState(() => startDate = date);
-                        }),
+                        child: _buildDatePicker(startDate, _openDateRangePicker),
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
@@ -82,9 +119,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
                         ),
                       ),
                       Expanded(
-                        child: _buildDatePicker(endDate, (date) {
-                          setState(() => endDate = date);
-                        }),
+                        child: _buildDatePicker(endDate, _openDateRangePicker),
                       ),
                     ],
                   ),
@@ -230,6 +265,36 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
             ),
             
             const SizedBox(height: 20),
+
+            // Activity timeline
+            const Text(
+              "Recent Activity",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...activityItems.map((item) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildActivityCard(item),
+                )),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {},
+                child: const Text(
+                  "see all",
+                  style: TextStyle(
+                    color: Color(0xFF0A84FF),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -237,28 +302,70 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
     );
   }
 
-  Widget _buildDatePicker(String date, Function(String) onChanged) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1B1E),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            date,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
+  Widget _buildDatePicker(String date, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1A1B1E),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              date,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+              ),
             ),
-          ),
-          const Icon(Icons.calendar_today, color: Colors.white54, size: 16),
-        ],
+            const Icon(Icons.calendar_today, color: Colors.white54, size: 16),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _openDateRangePicker() async {
+    final initialStart = DateTime.tryParse(startDate) ?? DateTime.now().subtract(const Duration(days: 30));
+    final initialEnd = DateTime.tryParse(endDate) ?? DateTime.now();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2035),
+      initialDateRange: DateTimeRange(start: initialStart, end: initialEnd.isBefore(initialStart) ? initialStart : initialEnd),
+      builder: (context, child) {
+        // Keep dark theme consistent with page styling
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF0A84FF),
+              surface: Color(0xFF1A1B1E),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        startDate = _formatDate(picked.start);
+        endDate = _formatDate(picked.end);
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final y = date.year.toString().padLeft(4, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    final d = date.day.toString().padLeft(2, '0');
+    return "$y-$m-$d";
   }
 
   Widget _buildDropdown(String value, List<String> items, Function(String?) onChanged) {
@@ -317,6 +424,123 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildActivityCard(Map<String, String> item) {
+    final status = item['status'] ?? '';
+    final statusColor = _statusColor(status);
+    final iconData = _activityIcon(item['type']);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1F2027),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(iconData, color: statusColor, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item['book'] ?? '',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      Text(
+                        item['type'] ?? '',
+                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text(
+                  status,
+                  style: TextStyle(color: statusColor, fontWeight: FontWeight.w600, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 24,
+            runSpacing: 8,
+            children: [
+              _infoRow(Icons.person_outline, 'User', item['user']),
+              _infoRow(Icons.badge_outlined, 'ID', item['id']),
+              _infoRow(Icons.calendar_today, 'Date', item['date']),
+              _infoRow(Icons.access_time, 'Time', item['time']),
+              if (item['amount'] != null) _infoRow(Icons.attach_money, 'Amount', item['amount']),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String? value) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: Colors.white54),
+        const SizedBox(width: 6),
+        Text(
+          "$label: ${value ?? '-'}",
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'completed':
+        return const Color(0xFF46C08A);
+      case 'paid':
+        return const Color(0xFF46C08A);
+      case 'active':
+        return const Color(0xFF2F8BFF);
+      default:
+        return const Color(0xFFAAAAAA);
+    }
+  }
+
+  IconData _activityIcon(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'borrow':
+        return Icons.book_outlined;
+      case 'return':
+        return Icons.assignment_turned_in_outlined;
+      case 'fine payment':
+        return Icons.receipt_long_outlined;
+      case 'reservation':
+        return Icons.event_available_outlined;
+      default:
+        return Icons.info_outline;
+    }
   }
   
 }
