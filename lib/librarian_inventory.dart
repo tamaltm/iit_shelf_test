@@ -23,7 +23,7 @@ class LibrarianInventoryPage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 40),
-            
+
             // Action Cards
             _buildActionCard(
               context,
@@ -64,7 +64,17 @@ class LibrarianInventoryPage extends StatelessWidget {
                 Navigator.pushNamed(context, '/remove-shelf');
               },
             ),
-            
+            const SizedBox(height: 20),
+            _buildActionCard(
+              context,
+              "Add Course",
+              Icons.school,
+              Colors.green,
+              () {
+                Navigator.pushNamed(context, '/add-course');
+              },
+            ),
+
             const SizedBox(height: 20),
           ],
         ),
@@ -101,11 +111,7 @@ class LibrarianInventoryPage extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(
-              icon,
-              color: color,
-              size: 48,
-            ),
+            Icon(icon, color: color, size: 48),
           ],
         ),
       ),
@@ -133,15 +139,31 @@ class LibrarianInventoryPage extends StatelessWidget {
               _buildNavItem(Icons.dashboard, "Dashboard", activeIndex == 0, () {
                 Navigator.pushReplacementNamed(context, '/librarian-dashboard');
               }),
-              _buildNavItem(Icons.inventory_2, "Inventory", activeIndex == 1, () {
-                Navigator.pushReplacementNamed(context, '/librarian-inventory');
-              }),
+              _buildNavItem(
+                Icons.inventory_2,
+                "Inventory",
+                activeIndex == 1,
+                () {
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/librarian-inventory',
+                  );
+                },
+              ),
               _buildNavItem(Icons.assessment, "Reports", activeIndex == 2, () {
                 Navigator.pushReplacementNamed(context, '/librarian-reports');
               }),
-              _buildNavItem(Icons.request_page, "Requests", activeIndex == 3, () {
-                Navigator.pushReplacementNamed(context, '/librarian-requests');
-              }),
+              _buildNavItem(
+                Icons.request_page,
+                "Requests",
+                activeIndex == 3,
+                () {
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/librarian-requests',
+                  );
+                },
+              ),
               _buildNavItem(Icons.person, "Profile", activeIndex == 4, () {
                 Navigator.pushReplacementNamed(context, '/librarian-profile');
               }),

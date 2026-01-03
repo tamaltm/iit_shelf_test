@@ -27,6 +27,7 @@ import 'add_shelf.dart';
 import 'remove_shelf.dart';
 import 'add_book.dart';
 import 'remove_book.dart';
+import 'add_course.dart';
 import 'generate_reports.dart';
 import 'transaction_history.dart';
 import 'return_details.dart';
@@ -83,7 +84,7 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/forgot-password': (context) => const ForgotPasswordPage(),
         '/dashboard': (context) => const ProfessorDashboardPage(),
         '/teacher-dashboard': (context) => const TeacherDashboardPage(),
-  '/teacher-profile': (context) => const TeacherProfilePage(),
+        '/teacher-profile': (context) => const TeacherProfilePage(),
         '/teacher-library': (context) => const TeacherLibraryPage(),
         '/teacher-my-books': (context) => const TeacherMyBooksPage(),
         '/librarian-dashboard': (context) => const LibrarianDashboardPage(),
@@ -100,13 +101,18 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/remove-shelf': (context) => const RemoveShelfPage(),
         '/add-book': (context) => const AddBookPage(),
         '/remove-book': (context) => const RemoveBookPage(),
+        '/add-course': (context) => const AddCoursePage(),
         '/generate-reports': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           final userRole = args?['userRole'] ?? 'librarian';
           return GenerateReportsPage(userRole: userRole);
         },
         '/transaction-history': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           final userRole = args?['userRole'] ?? 'user';
           return TransactionHistoryPage(userRole: userRole);
         },
@@ -115,20 +121,26 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/returned': (context) => const ReturnedBooksPage(),
         '/reserved': (context) => const ReservedBooksPage(),
         '/library': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           return LibraryPage(userRole: args?['userRole']);
         },
         '/payment': (context) => const PaymentPage(),
-  '/profile': (context) => const ProfilePage(),
-  '/edit-profile': (context) => const EditProfilePage(),
+        '/profile': (context) => const ProfilePage(),
+        '/edit-profile': (context) => const EditProfilePage(),
         '/notifications': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           return NotificationsPage(userRole: args?['userRole']);
         },
         '/general-notices': (context) => const GeneralNoticesPage(),
         '/contact-librarian': (context) => const ContactLibrarianPage(),
         '/request-book-details': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           return RequestBookDetailsPage(
             requestId: args?['requestId'],
             status: args?['status'],
@@ -136,7 +148,9 @@ class _IITShelfAppState extends State<IITShelfApp> {
         },
         '/upload-pdf': (context) => const UploadPdfPage(),
         '/book-detail': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           return BookDetailPage(
             title: args?['title'] ?? 'Unknown Title',
             author: args?['author'] ?? 'Unknown Author',
@@ -147,7 +161,9 @@ class _IITShelfAppState extends State<IITShelfApp> {
           );
         },
         '/return-details': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           return ReturnDetailsPage(
             title: args?['title'] ?? 'Unknown Title',
             author: args?['author'] ?? 'Unknown Author',
@@ -192,10 +208,10 @@ class _IITShelfHomeState extends State<IITShelfHome> {
     }
 
     if (AuthService.validateLogin(email, password)) {
-  final role = AuthService.getUserRole(email);
-  final route = AuthService.getDefaultRouteForRole(role!);
-  AuthService.setCurrentUser(email);
-      
+      final role = AuthService.getUserRole(email);
+      final route = AuthService.getDefaultRouteForRole(role!);
+      AuthService.setCurrentUser(email);
+
       // Check if widget is still mounted before using context
       if (mounted) {
         Navigator.pushReplacementNamed(context, route);
@@ -257,13 +273,10 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                 const SizedBox(height: 8),
                 Text(
                   "Sign in to access your digital library",
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(color: Colors.grey[400], fontSize: 15),
                 ),
                 const SizedBox(height: 26),
-                
+
                 if (_errorMessage != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -275,18 +288,25 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(color: Colors.red, fontSize: 13),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                
+
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -322,7 +342,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                   },
                 ),
                 const SizedBox(height: 16),
-                
+
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -350,7 +370,9 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         color: Colors.grey[400],
                       ),
                       onPressed: () {
@@ -370,7 +392,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                   onFieldSubmitted: (_) => _handleLogin(),
                 ),
                 const SizedBox(height: 10),
-                
+
                 Align(
                   alignment: Alignment.centerRight,
                   child: TextButton(
@@ -387,7 +409,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
+
                 Row(
                   children: [
                     Checkbox(
@@ -398,15 +420,12 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                     const SizedBox(width: 6),
                     const Text(
                       "Remember me",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: TextStyle(color: Colors.white, fontSize: 14),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -420,21 +439,27 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Don't have an account? ", style: TextStyle(color: Colors.grey[400])),
+                    Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.pushNamed(context, '/register');
                       },
-                      child: const Text("Register", style: TextStyle(color: Colors.blue)),
+                      child: const Text(
+                        "Register",
+                        style: TextStyle(color: Colors.blue),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 TextButton.icon(
                   onPressed: () {
                     Navigator.pushNamed(context, '/library');
@@ -446,7 +471,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -473,10 +498,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
                       const SizedBox(height: 4),
                       Text(
                         "Password: 123",
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 11),
                       ),
                     ],
                   ),
@@ -494,10 +516,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         "$role: $email",
-        style: TextStyle(
-          color: Colors.grey[300],
-          fontSize: 11,
-        ),
+        style: TextStyle(color: Colors.grey[300], fontSize: 11),
       ),
     );
   }
