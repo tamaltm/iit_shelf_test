@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'custom_app_bar.dart';
 import 'auth_service.dart';
+import 'book_service.dart';
+import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
-import 'book_resources.dart';
 
 class UploadPdfPage extends StatefulWidget {
   const UploadPdfPage({super.key});
@@ -13,53 +13,77 @@ class UploadPdfPage extends StatefulWidget {
 
 class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String? _selectedBook;
+  String? _selectedBookTitle;
+  int? _selectedBookId;
   String? _selectedRequestedBook;
   String _pdfUrl = '';
   bool _appliedRouteArgs = false;
 
-  // Use canonical book resources; rotate indices for variety in different pages.
-  final existingBooks = [
-    {'title': bookResources[3]['title']!, 'isbn': '123512ASED', 'author': bookResources[3]['author']!},
-    {'title': bookResources[0]['title']!, 'isbn': '234612AB', 'author': bookResources[0]['author']!},
-    {'title': bookResources[1]['title']!, 'isbn': '345713BC', 'author': bookResources[1]['author']!},
-    {'title': bookResources[2]['title']!, 'isbn': '456814CD', 'author': bookResources[2]['author']!},
-  ];
+  List<Book> _books = [];
+  bool _loadingBooks = true;
+  bool _submitting = false;
 
   final requestedBooks = [
-    {'title': bookResources[2]['title']!, 'isbn': '123512ASED', 'author': bookResources[2]['author']!},
-    {'title': 'System Engineering', 'isbn': '234612AB', 'author': 'Emily Davis'},
-    {'title': 'Advanced Algorithms', 'isbn': '345713BC', 'author': 'Michael Chen'},
+    {'title': 'System Engineering', 'isbn': '123512ASED', 'author': 'Emily Davis'},
+    {'title': 'Advanced Algorithms', 'isbn': '234612AB', 'author': 'Michael Chen'},
+    {'title': 'Data Pipelines', 'isbn': '345713BC', 'author': 'Rahim Uddin'},
   ];
 
-  final List<Map<String, dynamic>> pendingUploads = [
-    {
-      'bookTitle': bookResources[3]['title']!,
-      'uploadType': 'Update',
-      'status': 'Pending',
-      'submittedDate': '2024-12-20',
-      'notes': 'Updated edition with new chapters',
-    },
-    {
-      'bookTitle': bookResources[2]['title']!,
-      'uploadType': 'New Request',
-      'status': 'Approved',
-      'submittedDate': '2024-12-18',
-      'notes': 'PDF for newly requested book',
-    },
-    {
-      'bookTitle': 'Machine Learning Basics',
-      'uploadType': 'Update',
-      'status': 'Rejected',
-      'submittedDate': '2024-12-15',
-      'notes': 'File format not supported',
-    },
-  ];
+  late List<Map<String, dynamic>> pendingUploads;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    pendingUploads = [
+      {
+        'bookTitle': requestedBooks.isNotEmpty ? requestedBooks.first['title']! : 'Requested Book',
+        'uploadType': 'Update',
+        'status': 'Pending',
+        'submittedDate': '2024-12-20',
+        'notes': 'Updated edition with new chapters',
+      },
+      {
+        'bookTitle': requestedBooks.length > 1 ? requestedBooks[1]['title']! : 'Requested Book',
+        'uploadType': 'New Request',
+        'status': 'Approved',
+        'submittedDate': '2024-12-18',
+        'notes': 'PDF for newly requested book',
+      },
+      {
+        'bookTitle': 'Machine Learning Basics',
+        'uploadType': 'Update',
+        'status': 'Rejected',
+        'submittedDate': '2024-12-15',
+        'notes': 'File format not supported',
+      },
+    ];
+    _loadBooks();
+  }
+
+  Future<void> _loadBooks() async {
+    try {
+      final books = await BookService.fetchBooks();
+      setState(() {
+        _books = books;
+        _loadingBooks = false;
+
+        if (_selectedBookTitle != null) {
+          final match = books.firstWhere(
+            (b) => b.title == _selectedBookTitle,
+            orElse: () => books.isNotEmpty ? books.first : Book(id: 0, title: '', author: ''),
+          );
+          if (match.id != 0) {
+            _selectedBookId = match.id;
+            _selectedBookTitle = match.title;
+          }
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _loadingBooks = false;
+      });
+    }
   }
 
   @override
@@ -81,7 +105,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
           WidgetsBinding.instance.addPostFrameCallback((_) {
             setState(() {
               _tabController.animateTo(0);
-              if (bookTitle != null) _selectedBook = bookTitle;
+              if (bookTitle != null) _selectedBookTitle = bookTitle;
             });
           });
         }
@@ -177,30 +201,41 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                     border: Border.all(color: Colors.white24),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedBook,
-                      hint: const Text(
-                        "Choose a book to update",
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                      isExpanded: true,
-                      dropdownColor: const Color(0xFF2C2D35),
-                      style: const TextStyle(color: Colors.white),
-                      items: existingBooks.map((book) {
-                        return DropdownMenuItem<String>(
-                          value: book['title'],
-                          child: Text(
-                            '${book['title']} - ${book['isbn']}',
-                            style: const TextStyle(fontSize: 14),
+                    child: _loadingBooks
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 12),
+                            child: Text(
+                              'Loading books...',
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                          )
+                        : DropdownButton<int>(
+                            value: _selectedBookId,
+                            hint: const Text(
+                              "Choose a book to update",
+                              style: TextStyle(color: Colors.white54),
+                            ),
+                            isExpanded: true,
+                            dropdownColor: const Color(0xFF2C2D35),
+                            style: const TextStyle(color: Colors.white),
+                            items: _books.map((book) {
+                              return DropdownMenuItem<int>(
+                                value: book.id,
+                                child: Text(
+                                  '${book.title} - ${book.isbn ?? 'N/A'}',
+                                  style: const TextStyle(fontSize: 14),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _selectedBookId = value;
+                                _selectedBookTitle = _books
+                                    .firstWhere((b) => b.id == value)
+                                    .title;
+                              });
+                            },
                           ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedBook = value;
-                        });
-                      },
-                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -274,7 +309,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _selectedBook != null && _pdfUrl.isNotEmpty
+                    onPressed: _selectedBookId != null && _pdfUrl.isNotEmpty
                         ? () {
                             _submitUpload('Update');
                           }
@@ -648,39 +683,47 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
     );
   }
 
-  void _submitUpload(String uploadType) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2C2D35),
-        title: const Text(
-          "Upload Submitted",
-          style: TextStyle(color: Colors.white),
-        ),
-        content: Text(
-          "Your PDF upload for ${uploadType == 'Update' ? _selectedBook : _selectedRequestedBook} has been submitted for librarian approval.",
-          style: const TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {
-                _selectedBook = null;
-                _selectedRequestedBook = null;
-                _pdfUrl = '';
-                // Removed setting _notes to empty string
-                _tabController.animateTo(2);
-              });
-            },
-            child: const Text("View My Uploads"),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("OK"),
-          ),
-        ],
+  Future<void> _submitUpload(String uploadType) async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+
+    ApiResponse result;
+    if (uploadType == 'Update') {
+      if (_selectedBookId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Select a book to update.')),
+        );
+        setState(() => _submitting = false);
+        return;
+      }
+      result = await BookService.uploadPdf(
+        bookId: _selectedBookId!,
+        pdfUrl: _pdfUrl,
+      );
+    } else {
+      result = await BookService.requestAddition(
+        title: _selectedRequestedBook ?? 'Requested book',
+        reason: _pdfUrl,
+      );
+    }
+
+    setState(() => _submitting = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.ok ? Colors.green : Colors.redAccent,
       ),
     );
+
+    if (result.ok) {
+      setState(() {
+        _selectedBookId = null;
+        _selectedBookTitle = null;
+        _selectedRequestedBook = null;
+        _pdfUrl = '';
+      });
+      _tabController.animateTo(2);
+    }
   }
 }

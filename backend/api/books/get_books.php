@@ -6,12 +6,8 @@ $db = $database->getConnection();
 
 $search = isset($_GET['search']) ? $_GET['search'] : '';
 $category = isset($_GET['category']) ? $_GET['category'] : '';
-$shelf_id = isset($_GET['shelf_id']) ? $_GET['shelf_id'] : '';
 
-$query = "SELECT b.*, s.shelf_name, s.location 
-          FROM books b 
-          LEFT JOIN shelves s ON b.shelf_id = s.id 
-          WHERE 1=1";
+$query = "SELECT b.* FROM books b WHERE b.is_deleted = 0";
 
 if (!empty($search)) {
     $query .= " AND (b.title LIKE :search OR b.author LIKE :search OR b.isbn LIKE :search)";
@@ -19,10 +15,6 @@ if (!empty($search)) {
 
 if (!empty($category)) {
     $query .= " AND b.category = :category";
-}
-
-if (!empty($shelf_id)) {
-    $query .= " AND b.shelf_id = :shelf_id";
 }
 
 $query .= " ORDER BY b.created_at DESC";
@@ -38,35 +30,34 @@ if (!empty($category)) {
     $stmt->bindParam(":category", $category);
 }
 
-if (!empty($shelf_id)) {
-    $stmt->bindParam(":shelf_id", $shelf_id);
-}
-
 $stmt->execute();
 
 $books = [];
 
 while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
     $books[] = [
-        "id" => $row['id'],
-        "title" => $row['title'],
-        "author" => $row['author'],
-        "isbn" => $row['isbn'],
-        "category" => $row['category'],
-        "quantity" => $row['quantity'],
-        "available_quantity" => $row['available_quantity'],
-        "shelf_name" => $row['shelf_name'],
-        "location" => $row['location'],
-        "cover_image" => $row['cover_image'],
-        "pdf_url" => $row['pdf_url'],
-        "description" => $row['description']
+        'isbn' => $row['isbn'],
+        'title' => $row['title'],
+        'author' => $row['author'],
+        'category' => $row['category'],
+        'publisher' => $row['publisher'],
+        'publication_year' => $row['publication_year'],
+        'edition' => $row['edition'],
+        'description' => $row['description'],
+        'pic_path' => $row['pic_path'],
+        'language' => $row['language'],
+        'keywords' => $row['keywords'],
+        'copies_total' => (int)$row['copies_total'],
+        'copies_available' => (int)$row['copies_available'],
+        'created_at' => $row['created_at'],
+        'updated_at' => $row['updated_at'],
     ];
 }
 
 http_response_code(200);
 echo json_encode([
-    "success" => true,
-    "count" => count($books),
-    "books" => $books
+    'success' => true,
+    'count' => count($books),
+    'books' => $books,
 ]);
 ?>

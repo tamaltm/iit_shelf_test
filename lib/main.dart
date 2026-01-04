@@ -27,6 +27,8 @@ import 'add_shelf.dart';
 import 'remove_shelf.dart';
 import 'add_book.dart';
 import 'remove_book.dart';
+import 'edit_book.dart';
+import 'edit_book_detail.dart';
 import 'add_course.dart';
 import 'generate_reports.dart';
 import 'transaction_history.dart';
@@ -41,8 +43,13 @@ import 'teacher_library.dart';
 import 'director_library.dart';
 import 'librarian_my_books.dart';
 import 'theme_service.dart';
+import 'book_service.dart' as booksvc;
 
-void main() => runApp(IITShelfApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await AuthService.restoreSession();
+  runApp(IITShelfApp());
+}
 
 class IITShelfApp extends StatefulWidget {
   const IITShelfApp({super.key});
@@ -72,11 +79,14 @@ class _IITShelfAppState extends State<IITShelfApp> {
 
   @override
   Widget build(BuildContext context) {
+    final email = AuthService.getCurrentUserEmail();
+    final role = AuthService.getCurrentUserRole();
+    
     return MaterialApp(
       title: 'IITShelf — Digital Library',
       theme: _themeService.currentTheme,
-      // Use the dedicated LoginPage as the initial screen
-      home: const LoginPage(),
+      // Route to dashboard if already logged in, otherwise to login
+      home: email != null ? _getHomePageForRole(role) : const LoginPage(),
       debugShowCheckedModeBanner: false,
       routes: {
         '/login': (context) => const LoginPage(),
@@ -101,6 +111,11 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/remove-shelf': (context) => const RemoveShelfPage(),
         '/add-book': (context) => const AddBookPage(),
         '/remove-book': (context) => const RemoveBookPage(),
+        '/edit-book': (context) => const EditBookPage(),
+        '/edit-book-detail': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as booksvc.Book;
+          return EditBookDetailPage(book: args);
+        },
         '/add-course': (context) => const AddCoursePage(),
         '/generate-reports': (context) {
           final args =
@@ -174,6 +189,20 @@ class _IITShelfAppState extends State<IITShelfApp> {
       },
     );
   }
+
+  Widget _getHomePageForRole(String? role) {
+    // Navigate to appropriate dashboard based on user role
+    switch (role?.toLowerCase()) {
+      case 'teacher':
+        return const TeacherDashboardPage();
+      case 'librarian':
+        return const LibrarianDashboardPage();
+      case 'director':
+        return const DirectorDashboardPage();
+      default:
+        return const ProfessorDashboardPage(); // Default to student dashboard
+    }
+  }
 }
 
 class IITShelfHome extends StatefulWidget {
@@ -196,7 +225,7 @@ class _IITShelfHomeState extends State<IITShelfHome> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -207,19 +236,20 @@ class _IITShelfHomeState extends State<IITShelfHome> {
       return;
     }
 
-    if (AuthService.validateLogin(email, password)) {
-      final role = AuthService.getUserRole(email);
-      final route = AuthService.getDefaultRouteForRole(role!);
-      AuthService.setCurrentUser(email);
-
-      // Check if widget is still mounted before using context
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, route);
-      }
-    } else {
+    final result = await AuthService.login(email, password);
+    if (!result.ok) {
       setState(() {
-        _errorMessage = "Invalid email or password";
+        _errorMessage = result.message;
       });
+      return;
+    }
+
+    final role = result.role ?? AuthService.getCurrentUserRole() ?? 'student';
+    final route = AuthService.getDefaultRouteForRole(role);
+    AuthService.setCurrentUser(email, role: role);
+
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, route);
     }
   }
 

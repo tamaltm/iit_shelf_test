@@ -131,6 +131,8 @@ class _LibrarianProfilePageState extends State<LibrarianProfilePage> {
                 ),
               ),
             ),
+            const SizedBox(height: 20),
+            _buildSettingsButton(context),
           ],
         ),
       ),
@@ -209,7 +211,49 @@ class _LibrarianProfilePageState extends State<LibrarianProfilePage> {
     );
   }
 
-  
+  Widget _buildSettingsButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton(
+        onPressed: () async {
+          // Show confirmation dialog
+          final confirmed = await showDialog<bool>(
+            context: context,
+            builder: (dialogContext) => AlertDialog(
+              backgroundColor: const Color(0xFF2C2D35),
+              title: const Text('Logout', style: TextStyle(color: Colors.white)),
+              content: const Text('Are you sure you want to logout?', style: TextStyle(color: Colors.white70)),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ),
+          );
+
+          if (confirmed == true) {
+            await AuthService.logout();
+            if (mounted) {
+              Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+            }
+          }
+        },
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Colors.red, width: 1.5),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+        ),
+        child: const Text(
+          "Logout",
+          style: TextStyle(color: Colors.red, fontSize: 16),
+        ),
+      ),
+    );
+  }
 }
 
 class LineChartPainter extends CustomPainter {

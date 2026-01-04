@@ -21,7 +21,7 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text;
 
@@ -32,15 +32,14 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    if (AuthService.validateLogin(email, password)) {
-      AuthService.setCurrentUser(email); // Set the current user
-      final role = AuthService.getUserRole(email);
-      final route = AuthService.getDefaultRouteForRole(role!);
-      
+    final res = await AuthService.login(email, password);
+    if (res.ok) {
+      final route = AuthService.getDefaultRouteForRole(res.role ?? 'student');
+      if (!mounted) return;
       Navigator.pushReplacementNamed(context, route);
     } else {
       setState(() {
-        _errorMessage = "Invalid email or password";
+        _errorMessage = res.message;
       });
     }
   }
@@ -99,13 +98,10 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 8),
                 Text(
                   "Sign in to continue to IITShelf.",
-                  style: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 15,
-                  ),
+                  style: TextStyle(color: Colors.grey[400], fontSize: 15),
                 ),
                 const SizedBox(height: 26),
-                
+
                 if (_errorMessage != null)
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -117,18 +113,25 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                        const Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _errorMessage!,
-                            style: const TextStyle(color: Colors.red, fontSize: 13),
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                
+
                 const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
@@ -191,7 +194,9 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                         color: Colors.grey[400],
                       ),
                       onPressed: () {
@@ -278,12 +283,18 @@ class _LoginPageState extends State<LoginPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Don't have an account? ", style: TextStyle(color: Colors.grey[400])),
+                    Text(
+                      "Don't have an account? ",
+                      style: TextStyle(color: Colors.grey[400]),
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.pushReplacementNamed(context, '/register');
                       },
-                      child: const Text("Register", style: TextStyle(color: Colors.blue)),
+                      child: const Text(
+                        "Register",
+                        style: TextStyle(color: Colors.blue),
+                      ),
                     ),
                   ],
                 ),
@@ -304,7 +315,9 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: BoxDecoration(
                     color: Colors.blue.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: Colors.blue.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,10 +337,7 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 4),
                       Text(
                         "Password: 123",
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 11,
-                        ),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 11),
                       ),
                     ],
                   ),
@@ -345,10 +355,7 @@ class _LoginPageState extends State<LoginPage> {
       padding: const EdgeInsets.only(bottom: 4),
       child: Text(
         "$role: $email",
-        style: TextStyle(
-          color: Colors.grey[300],
-          fontSize: 11,
-        ),
+        style: TextStyle(color: Colors.grey[300], fontSize: 11),
       ),
     );
   }

@@ -113,8 +113,11 @@ class _DirectorProfilePageState extends State<DirectorProfilePage> {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: () {
-                  Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+                onPressed: () async {
+                  await AuthService.logout();
+                  if (mounted) {
+                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                  }
                 },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: Colors.red, width: 1.5),

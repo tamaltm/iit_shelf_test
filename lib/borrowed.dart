@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'return_details.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
 import 'book_resources.dart';
 import 'book_image.dart';
+import 'book_service.dart';
 
 class BorrowedBooksPage extends StatelessWidget {
   const BorrowedBooksPage({super.key});
@@ -83,6 +83,7 @@ class BorrowedBooksPage extends StatelessWidget {
                   title: bookResources[0]['title']!,
                   author: bookResources[0]['author']!,
                   id: "824(B)",
+                  borrowRecordId: 1,
                   due: "Due in 2 days",
                 ),
                 BorrowedBookCard(
@@ -90,6 +91,7 @@ class BorrowedBooksPage extends StatelessWidget {
                   title: bookResources[1]['title']!,
                   author: bookResources[1]['author']!,
                   id: "321(A)",
+                  borrowRecordId: 2,
                   due: "Due in 5 days",
                 ),
               ],
@@ -133,6 +135,7 @@ class _TabButton extends StatelessWidget {
 
 class BorrowedBookCard extends StatelessWidget {
   final String image, title, author, id, due;
+  final int? borrowRecordId;
 
   const BorrowedBookCard({
     super.key,
@@ -141,6 +144,7 @@ class BorrowedBookCard extends StatelessWidget {
     required this.author,
     required this.id,
     required this.due,
+    this.borrowRecordId,
   });
 
   @override
@@ -227,19 +231,7 @@ class BorrowedBookCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => ReturnDetailsPage(
-                            title: title,
-                            image: image,
-                            author: author,
-                            bookId: id,
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () => _handleReturn(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                     ),
@@ -283,6 +275,62 @@ class BorrowedBookCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _handleReturn(BuildContext context) async {
+    int? returnId = borrowRecordId;
+
+    if (returnId == null) {
+      final controller = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF2C2D35),
+          title: const Text('Enter Borrow ID', style: TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white),
+            decoration: const InputDecoration(hintText: 'e.g. 12', hintStyle: TextStyle(color: Colors.white54)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Submit'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+      returnId = int.tryParse(controller.text.trim());
+      if (returnId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Enter a valid borrow ID.')),
+        );
+        return;
+      }
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final res = await BookService.returnBook(borrowId: returnId);
+    if (Navigator.canPop(context)) Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res.message),
+        backgroundColor: res.ok ? Colors.green : Colors.redAccent,
       ),
     );
   }

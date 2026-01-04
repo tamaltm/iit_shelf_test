@@ -1,126 +1,252 @@
-import 'dart:math';
+import 'dart:convert';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// AuthService now calls the backend PHP APIs (register, verify, login, reset).
 class AuthService {
-  // Map emails to roles for demo purposes
-  static final Map<String, String> _userRoles = {
-    'student': 'student',
-    'teacher': 'teacher',
-    'librarian': 'librarian',
-    'director': 'director',
-  };
-
-  // Dummy password for all users (for demo)
-  static const String _dummyPassword = '123';
-
-  // Per-user password overrides (for resets in demo)
-  static final Map<String, String> _passwordOverrides = {};
-
-  // OTP/reset tracking (demo only)
-  static final Map<String, String> _resetOtps = {};
-  static final Map<String, DateTime> _otpExpiry = {};
-  static final Map<String, DateTime> _otpCooldown = {};
-
-  static String? getUserRole(String email) {
-    return _userRoles[email.toLowerCase()];
+  static String get _baseHost {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    return 'http://localhost:8000';
   }
 
-  // Simple global session state for demo purposes
-  static String? _currentUserEmail;
+  static String get _baseUrl => '$_baseHost/auth';
+  static const int _cooldownSeconds = 60;
+  
+  // Session persistence keys
+  static const String _userEmailKey = 'user_email';
+  static const String _userRoleKey = 'user_role';
+  static const String _userTokenKey = 'user_token';
 
-  static void setCurrentUser(String? email) {
-    _currentUserEmail = email?.toLowerCase();
+  static String? _currentUserEmail;
+  static String? _currentUserRole;
+  static String? _token; // placeholder for future JWT/session
+
+  // Lightweight in-memory profile cache used by legacy UI screens that
+  // expect synchronous getters. Replace with real profile API when ready.
+  static final Map<String, dynamic> _profile = {};
+
+  static final Map<String, DateTime> _verifyCooldown = {};
+  static final Map<String, DateTime> _resetCooldown = {};
+
+  static AuthResult result({
+    required bool ok,
+    required String message,
+    String? role,
+  }) => AuthResult(ok: ok, message: message, role: role);
+
+  static String _norm(String email) => email.trim().toLowerCase();
+
+  static void setCurrentUser(String? email, {String? role, String? token}) {
+    _currentUserEmail = email == null ? null : _norm(email);
+    _currentUserRole = role;
+    _token = token;
+    
+    // Persist to SharedPreferences
+    _persistSession();
   }
 
   static String? getCurrentUserEmail() => _currentUserEmail;
+  static String? getCurrentUserRole() => _currentUserRole;
+  static String? getToken() => _token;
 
-  static String? getCurrentUserRole() {
+  static Map<String, dynamic> getCurrentUserProfile() {
+    return {
+      'email': _currentUserEmail,
+      'role': _currentUserRole,
+      ..._profile,
+    };
+  }
+
+  static void updateCurrentUserProfile(Map<String, dynamic> updates) {
+    _profile.addAll(updates);
+  }
+
+  // Persist session to SharedPreferences
+  static Future<void> _persistSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_currentUserEmail != null) {
+        await prefs.setString(_userEmailKey, _currentUserEmail!);
+        if (_currentUserRole != null) {
+          await prefs.setString(_userRoleKey, _currentUserRole!);
+        }
+        if (_token != null) {
+          await prefs.setString(_userTokenKey, _token!);
+        }
+      } else {
+        // Clear session on logout
+        await prefs.remove(_userEmailKey);
+        await prefs.remove(_userRoleKey);
+        await prefs.remove(_userTokenKey);
+      }
+    } catch (e) {
+      // Silent fail - SharedPreferences not critical
+    }
+  }
+
+  // Restore session from SharedPreferences
+  static Future<void> restoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final email = prefs.getString(_userEmailKey);
+      
+      if (email != null) {
+        final role = prefs.getString(_userRoleKey);
+        final token = prefs.getString(_userTokenKey);
+        
+        _currentUserEmail = email;
+        _currentUserRole = role;
+        _token = token;
+        
+        // Load profile data from backend
+        await getProfile(email);
+      }
+    } catch (e) {
+      // Silent fail - session restoration not critical
+    }
+  }
+
+  // Logout and clear session
+  static Future<void> logout() async {
+    _currentUserEmail = null;
+    _currentUserRole = null;
+    _token = null;
+    _profile.clear();
+    await _persistSession();
+  }
+
+  // Legacy helper used by older screens; returns role if the email matches
+  // the currently signed-in user.
+  static String? getUserRole(String email) {
     if (_currentUserEmail == null) return null;
-    return getUserRole(_currentUserEmail!);
+    return _norm(email) == _currentUserEmail ? _currentUserRole : null;
   }
 
-  // Simple in-memory profile store (demo only)
-  static final Map<String, Map<String, String>> _profiles = {};
+  // ------------------ Registration + email verification ------------------
 
-  static Map<String, String> getCurrentUserProfile() {
-    final email = _currentUserEmail ?? '';
-    return _profiles.putIfAbsent(email, () => {
-      'phone': '',
-      'image': 'lib/assets/profile.jpg',
+  /// Step 1: Send registration OTP (email only, no password yet)
+  static Future<AuthResult> sendRegisterOtp(
+    String email, {
+    String role = 'Student',
+    String phone = '',
+  }) async {
+    final body = {
+      'email': _norm(email),
+      'role': role,
+      'phone': phone,
+    };
+    final res = await _post('send_register_otp', body);
+    if (!res.ok) {
+      _applyVerifyCooldown(email);
+      return result(ok: false, message: res.message);
+    }
+    _applyVerifyCooldown(email);
+    return result(ok: true, message: res.message);
+  }
+
+  static Future<AuthResult> verifyEmailOtp(String email, String otp) async {
+    final res = await _post('verify_email', {
+      'email': _norm(email),
+      'otp': otp,
     });
+    if (!res.ok) {
+      return result(ok: false, message: res.message);
+    }
+    return result(ok: true, message: res.message);
   }
 
-  static void updateCurrentUserProfile(Map<String, String> data) {
-    final email = _currentUserEmail ?? '';
-    final existing = _profiles.putIfAbsent(email, () => {
-      'phone': '',
-      'image': 'lib/assets/profile.jpg',
+  /// Step 3: Set password after verification
+  static Future<AuthResult> setPasswordAfterVerification(
+    String email,
+    String password, {
+    String? name,
+    String? phone,
+    String? role,
+  }) async {
+    final res = await _post('set_password', {
+      'email': _norm(email),
+      'new_password': password,
+      if (name != null && name.isNotEmpty) 'name': name,
+      if (phone != null && phone.isNotEmpty) 'phone': phone,
+      if (role != null && role.isNotEmpty) 'role': role,
     });
-    existing.addAll(data);
+    if (!res.ok) {
+      return result(ok: false, message: res.message);
+    }
+    return result(ok: true, message: res.message);
   }
 
-  static bool validateLogin(String email, String password) {
-    final e = email.toLowerCase();
-    if (!_userRoles.containsKey(e)) return false;
-    final overridden = _passwordOverrides[e];
-    if (overridden != null) return overridden == password;
-    return password == _dummyPassword;
+  // ------------------ Login ------------------
+
+  static Future<AuthResult> login(String email, String password) async {
+    final res = await _post('login', {
+      'email': _norm(email),
+      'password': password,
+    });
+    if (!res.ok) {
+      return result(ok: false, message: res.message);
+    }
+    final role = res.data['role'] as String?;
+    final token = res.data['token'] as String?;
+    setCurrentUser(email, role: role, token: token);
+    
+    // Load profile data (including profile image) after successful login
+    await getProfile(_norm(email));
+    
+    return result(ok: true, message: res.message, role: role);
   }
 
-  // ----- Password reset (demo implementation) -----
-
-  static bool canSendOtp(String email) {
-    final e = email.toLowerCase();
-    final cooldown = _otpCooldown[e];
-    if (cooldown == null) return true;
-    return DateTime.now().isAfter(cooldown);
-  }
+  // ------------------ Password reset ------------------
 
   static int secondsUntilRetry(String email) {
-    final e = email.toLowerCase();
-    final cooldown = _otpCooldown[e];
-    if (cooldown == null) return 0;
-    final secs = cooldown.difference(DateTime.now()).inSeconds;
+    final ts = _resetCooldown[_norm(email)];
+    if (ts == null) return 0;
+    final secs = ts.difference(DateTime.now()).inSeconds;
     return secs > 0 ? secs : 0;
   }
 
-  // Simulate sending an OTP to the user's registered email.
-  // Returns true if OTP "sent" (email exists and not in cooldown).
-  static bool sendPasswordResetOtp(String email) {
-    final e = email.toLowerCase();
-    if (!_userRoles.containsKey(e)) return false;
-    if (!canSendOtp(e)) return false;
-    final otp = (Random().nextInt(900000) + 100000).toString();
-    _resetOtps[e] = otp;
-    _otpExpiry[e] = DateTime.now().add(const Duration(minutes: 5));
-    _otpCooldown[e] = DateTime.now().add(const Duration(minutes: 1));
-    // For demo purposes, print OTP to console (simulate email)
-    // In a real app, replace with email/SMS provider integration.
-    // ignore: avoid_print
-    print('Password reset OTP for $e: $otp');
+  static int secondsUntilVerificationRetry(String email) {
+    final ts = _verifyCooldown[_norm(email)];
+    if (ts == null) return 0;
+    final secs = ts.difference(DateTime.now()).inSeconds;
+    return secs > 0 ? secs : 0;
+  }
+
+  static Future<bool> sendPasswordResetOtp(String email) async {
+    final res = await _post('send_reset_otp', {'email': _norm(email)});
+    if (!res.ok) {
+      _applyResetCooldown(email);
+      return false;
+    }
+    _applyResetCooldown(email);
     return true;
   }
 
-  static bool verifyResetOtp(String email, String otp) {
-    final e = email.toLowerCase();
-    final stored = _resetOtps[e];
-    final expiry = _otpExpiry[e];
-    if (stored == null || expiry == null) return false;
-    if (DateTime.now().isAfter(expiry)) return false;
-    return stored == otp;
+  static Future<bool> verifyResetOtp(String email, String otp) async {
+    final res = await _post('verify_reset_otp', {
+      'email': _norm(email),
+      'otp': otp,
+    });
+    return res.ok;
   }
 
-  // Reset password after verifying OTP. Returns true on success.
-  static bool resetPassword(String email, String otp, String newPassword) {
-    final e = email.toLowerCase();
-    if (!verifyResetOtp(e, otp)) return false;
-    _passwordOverrides[e] = newPassword;
-    _resetOtps.remove(e);
-    _otpExpiry.remove(e);
-    return true;
+  static Future<bool> resetPassword(String email, String otp, String newPassword) async {
+    final res = await _post('reset_password', {
+      'email': _norm(email),
+      'otp': otp,
+      'new_password': newPassword,
+    });
+    return res.ok;
   }
+
+  // ------------------ Helpers ------------------
 
   static String getDefaultRouteForRole(String role) {
-    switch (role) {
+    switch (role.toLowerCase()) {
       case 'student':
         return '/dashboard';
       case 'teacher':
@@ -133,4 +259,92 @@ class AuthService {
         return '/dashboard';
     }
   }
+
+  static void _applyVerifyCooldown(String email) {
+    _verifyCooldown[_norm(email)] = DateTime.now().add(
+      const Duration(seconds: _cooldownSeconds),
+    );
+  }
+
+  static void _applyResetCooldown(String email) {
+    _resetCooldown[_norm(email)] = DateTime.now().add(
+      const Duration(seconds: _cooldownSeconds),
+    );
+  }
+
+  static Future<AuthResult> uploadProfileImage(String email, String imagePath) async {
+    try {
+      final file = await http.MultipartFile.fromPath('image', imagePath);
+      final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/upload_profile_image.php'))
+        ..fields['email'] = email
+        ..files.add(file);
+      
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
+      
+      final decoded = responseBody.isNotEmpty
+          ? jsonDecode(responseBody) as Map<String, dynamic>
+          : <String, dynamic>{};
+      
+      final success = decoded['success'] == true;
+      final message = decoded['message'] as String? ?? 'Upload failed';
+      
+      if (success) {
+        _profile['profile_image'] = decoded['image_url'];
+      }
+      
+      return result(ok: success, message: message);
+    } catch (e) {
+      return result(ok: false, message: 'Network error: $e');
+    }
+  }
+
+  static Future<AuthResult> getProfile(String email) async {
+    final apiResult = await _post('get_profile', {'email': email});
+    
+    if (apiResult.ok && apiResult.data['user'] is Map) {
+      final userData = apiResult.data['user'] as Map<String, dynamic>;
+      _profile.addAll(userData);
+      return result(ok: true, message: 'Profile loaded');
+    }
+    
+    return result(ok: false, message: apiResult.message);
+  }
+
+  static Future<_ApiResult> _post(String path, Map<String, dynamic> body) async {
+    try {
+      final normalized = path.endsWith('.php') ? path : '$path.php';
+      final uri = Uri.parse('$_baseUrl/$normalized');
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+      final decoded = resp.body.isNotEmpty
+          ? jsonDecode(resp.body) as Map<String, dynamic>
+          : <String, dynamic>{};
+      final success = decoded['success'] == true || (resp.statusCode >= 200 && resp.statusCode < 300);
+      final message = decoded['message'] as String? ?? 'Request failed';
+      final data = decoded;
+      return _ApiResult(ok: success, message: message, data: data);
+    } catch (e) {
+      return _ApiResult(ok: false, message: 'Network error: $e', data: {});
+    }
+  }
+}
+
+class AuthResult {
+  final bool ok;
+  final String message;
+  final String? role;
+
+  const AuthResult({required this.ok, required this.message, this.role});
+}
+
+class _ApiResult {
+  final bool ok;
+  final String message;
+  final Map<String, dynamic> data;
+
+  const _ApiResult({required this.ok, required this.message, required this.data});
 }

@@ -77,7 +77,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
             child: ClipOval(
               child: BookImage(
-                AuthService.getCurrentUserProfile()['image'] ?? profileImageUrl,
+                AuthService.getCurrentUserProfile()['profile_image'] ?? profileImageUrl,
                 width: 44,
                 height: 44,
                 fit: BoxFit.cover,
@@ -147,10 +147,33 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         IconButton(
           icon: Icon(Icons.logout_outlined, color: themeService.textColor),
           onPressed: () {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              '/',
-              (route) => false,
+            // Show confirmation dialog before logout
+            showDialog(
+              context: context,
+              builder: (BuildContext dialogContext) => AlertDialog(
+                backgroundColor: const Color(0xFF2C2D35),
+                title: const Text('Logout', style: TextStyle(color: Colors.white)),
+                content: const Text('Are you sure you want to logout?', style: TextStyle(color: Colors.white70)),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.of(dialogContext).pop(); // Close dialog first
+                      await AuthService.logout();
+                      if (context.mounted) {
+                        Navigator.of(context).pushNamedAndRemoveUntil(
+                          '/login',
+                          (route) => false,
+                        );
+                      }
+                    },
+                    child: const Text('Logout', style: TextStyle(color: Colors.red)),
+                  ),
+                ],
+              ),
             );
           },
         ),

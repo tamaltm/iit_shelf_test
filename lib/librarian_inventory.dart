@@ -37,7 +37,17 @@ class LibrarianInventoryPage extends StatelessWidget {
             const SizedBox(height: 20),
             _buildActionCard(
               context,
-              "Delete or Edit\nBook/PDF",
+              "Edit Book/PDF",
+              Icons.edit,
+              Colors.orange,
+              () {
+                Navigator.pushNamed(context, '/edit-book');
+              },
+            ),
+            const SizedBox(height: 20),
+            _buildActionCard(
+              context,
+              "Delete PDF",
               Icons.delete,
               Colors.red,
               () {

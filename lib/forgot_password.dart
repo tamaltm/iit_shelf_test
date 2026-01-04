@@ -63,12 +63,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       _message = null;
     });
     await Future.delayed(const Duration(milliseconds: 300));
-    final ok = AuthService.sendPasswordResetOtp(email);
+    final ok = await AuthService.sendPasswordResetOtp(email);
     setState(() {
       _isSending = false;
       if (ok) {
         _otpSent = true;
-        _message = 'OTP sent to your registered email (check console in demo).';
+        _message = 'OTP sent to your registered email.';
         _startResendTimer(email);
       } else {
         final secs = AuthService.secondsUntilRetry(email);
@@ -76,7 +76,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           _message = 'Please retry after $secs seconds.';
           _startResendTimer(email);
         } else {
-          _message = 'Email not found.';
+          _message = 'Email not found or not verified.';
         }
       }
     });
@@ -100,7 +100,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       _message = null;
     });
     await Future.delayed(const Duration(milliseconds: 300));
-    final ok = AuthService.resetPassword(email, otp, newPass);
+    final ok = await AuthService.resetPassword(email, otp, newPass);
     setState(() => _isResetting = false);
     if (ok) {
       if (!mounted) return;
@@ -134,7 +134,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       _message = null;
     });
     await Future.delayed(const Duration(milliseconds: 200));
-    final ok = AuthService.verifyResetOtp(email, otp);
+    final ok = await AuthService.verifyResetOtp(email, otp);
     if (ok) {
       setState(() {
         _verified = true;
@@ -172,7 +172,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 const SizedBox(height: 6),
                 const Text(
                   'Forgot Password',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
@@ -191,7 +195,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     ),
                     child: Text(
                       _message!,
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                 TextFormField(
@@ -203,7 +210,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                     fillColor: Colors.black,
                     hintText: 'Registered institution email',
                     hintStyle: TextStyle(color: Colors.grey[500]),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -216,7 +225,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         backgroundColor: Colors.blue,
                       ),
-                      child: _isSending ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Send OTP'),
+                      child: _isSending
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Send OTP'),
                     ),
                   ),
                 ] else if (!_verified) ...[
@@ -229,7 +247,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       fillColor: Colors.black,
                       hintText: 'Enter OTP',
                       hintStyle: TextStyle(color: Colors.grey[500]),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -238,14 +258,22 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: _verifyOtp,
-                          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), backgroundColor: Colors.blue),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: Colors.blue,
+                          ),
                           child: const Text('Verify OTP'),
                         ),
                       ),
                       const SizedBox(width: 8),
                       TextButton(
                         onPressed: _resendSeconds > 0 ? null : _sendOtp,
-                        child: Text(_resendSeconds > 0 ? 'Retry in ${_resendSeconds}s' : 'Resend OTP', style: const TextStyle(color: Colors.blue)),
+                        child: Text(
+                          _resendSeconds > 0
+                              ? 'Retry in ${_resendSeconds}s'
+                              : 'Resend OTP',
+                          style: const TextStyle(color: Colors.blue),
+                        ),
                       ),
                     ],
                   ),
@@ -259,10 +287,16 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       fillColor: Colors.black,
                       hintText: 'New password',
                       hintStyle: TextStyle(color: Colors.grey[500]),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                       suffixIcon: IconButton(
-                        icon: Icon(_obscureNew ? Icons.visibility_off : Icons.visibility, color: Colors.grey[400]),
-                        onPressed: () => setState(() => _obscureNew = !_obscureNew),
+                        icon: Icon(
+                          _obscureNew ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.grey[400],
+                        ),
+                        onPressed: () =>
+                            setState(() => _obscureNew = !_obscureNew),
                       ),
                     ),
                   ),
@@ -276,7 +310,9 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       fillColor: Colors.black,
                       hintText: 'Confirm password',
                       hintStyle: TextStyle(color: Colors.grey[500]),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -285,8 +321,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: _isResetting ? null : _resetPassword,
-                          style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), backgroundColor: Colors.blue),
-                          child: _isResetting ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Text('Reset Password'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            backgroundColor: Colors.blue,
+                          ),
+                          child: _isResetting
+                              ? const SizedBox(
+                                  height: 16,
+                                  width: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Reset Password'),
                         ),
                       ),
                     ],

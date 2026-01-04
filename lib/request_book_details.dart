@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'book_service.dart';
+
 class RequestBookDetailsPage extends StatefulWidget {
   final String? requestId;
   final String? status;
@@ -23,6 +25,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
   
   bool _imageUploaded = false;
   final String _userRole = "Student";
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -56,19 +59,34 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
 
   void _submitRequest() {
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Book request submitted successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-        ),
-      );
-      
-      Future.delayed(const Duration(seconds: 2), () {
-        if (mounted) {
-          Navigator.pop(context);
-        }
-      });
+      _sendRequest();
+    }
+  }
+
+  Future<void> _sendRequest() async {
+    setState(() => _isSubmitting = true);
+
+    final res = await BookService.requestAddition(
+      title: _titleController.text.trim().isEmpty
+          ? 'Untitled request'
+          : _titleController.text.trim(),
+      author: _authorController.text.trim(),
+      reason: _pdfUrlController.text.trim().isEmpty
+          ? null
+          : _pdfUrlController.text.trim(),
+    );
+
+    setState(() => _isSubmitting = false);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(res.message),
+        backgroundColor: res.ok ? Colors.green : Colors.redAccent,
+      ),
+    );
+
+    if (res.ok && mounted) {
+      Navigator.pop(context);
     }
   }
 
@@ -184,6 +202,44 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
               ),
               
               const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2D35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Text(
+                      "Book Title: ",
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _titleController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: const InputDecoration(
+                          hintText: "Enter title",
+                          hintStyle: TextStyle(color: Colors.white54),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter book title';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               
               Container(
                 padding: const EdgeInsets.all(16),
@@ -306,7 +362,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submitRequest,
+                  onPressed: _isSubmitting ? null : _submitRequest,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),
                     foregroundColor: Colors.white,
@@ -315,13 +371,19 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    "Request to add",
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          "Request to add",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                 ),
               ),
             ],

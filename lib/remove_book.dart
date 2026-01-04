@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'book_service.dart';
+
 class RemoveBookPage extends StatefulWidget {
   const RemoveBookPage({super.key});
 
@@ -8,18 +10,87 @@ class RemoveBookPage extends StatefulWidget {
 }
 
 class _RemoveBookPageState extends State<RemoveBookPage> {
-  final _titleController = TextEditingController();
-  final _isbnController = TextEditingController();
-  final _authorController = TextEditingController();
-  final _bookIdController = TextEditingController();
+  final _searchController = TextEditingController();
+
+  bool _isLoading = false;
+  String? _error;
+  List<Book> _books = [];
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _isbnController.dispose();
-    _authorController.dispose();
-    _bookIdController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBooks();
+  }
+
+  Future<void> _fetchBooks({String? query}) async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final res = await BookService.fetchBooks(search: query);
+      setState(() => _books = res);
+    } catch (e) {
+      setState(() => _error = 'Failed to load books');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _confirmDelete(Book book) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: Text(
+          'Are you sure you want to delete "${book.title}"?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await _deleteBook(book);
+    }
+  }
+
+  Future<void> _deleteBook(Book book) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final res = await BookService.deleteBook(isbn: book.isbn);
+
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(res.message),
+          backgroundColor: res.ok ? Colors.green : Colors.redAccent,
+        ),
+      );
+      if (res.ok) {
+        _fetchBooks(query: _searchController.text.trim());
+      }
+    }
   }
 
   @override
@@ -34,7 +105,7 @@ class _RemoveBookPageState extends State<RemoveBookPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Details",
+          'Delete Book',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
@@ -44,107 +115,82 @@ class _RemoveBookPageState extends State<RemoveBookPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Upload Image Section
-            Container(
-              height: 120,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.upload, color: Colors.blue, size: 40),
-                  const SizedBox(height: 8),
-                  const Text(
-                    "Upload img",
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            
-            // Book Title
-            TextField(
-              controller: _titleController,
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(
-                hintText: "Book Title",
-                hintStyle: TextStyle(color: Colors.white70),
-                border: InputBorder.none,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Row(
               children: [
-                Text("Your Role", style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Text("Student", style: TextStyle(color: Colors.white, fontSize: 14)),
+                Expanded(
+                  child: _buildSearchField(
+                    'Search by title/author/ISBN',
+                    _searchController,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () => _fetchBooks(query: _searchController.text.trim()),
+                  child: const Icon(Icons.search),
+                ),
               ],
             ),
-            const SizedBox(height: 24),
-            
-            _buildInfoField("Book ISBN:", _isbnController),
-            const SizedBox(height: 16),
-            _buildInfoField("Author:", _authorController),
-            const SizedBox(height: 16),
-            _buildInfoField("Book ID:", _bookIdController),
-            
-            const SizedBox(height: 40),
-            
-            ElevatedButton(
-              onPressed: () {
-                // Handle remove book logic
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Book removed successfully!")),
-                );
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            const SizedBox(height: 12),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_error != null)
+              Center(
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.redAccent),
                 ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: _books.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                itemBuilder: (context, index) {
+                  final b = _books[index];
+                  return ListTile(
+                    tileColor: const Color(0xFF2C2D35),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    title: Text(
+                      b.title,
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      '${b.author} • ${b.isbn ?? 'N/A'}',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                    trailing: const Icon(Icons.delete, color: Colors.redAccent),
+                    onTap: () => _confirmDelete(b),
+                  );
+                },
               ),
-              child: const Text(
-                "Remove",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildInfoField(String label, TextEditingController controller) {
+  Widget _buildSearchField(
+    String hint,
+    TextEditingController controller,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: const Color(0xFF2C2D35),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: controller,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: label,
-                hintStyle: const TextStyle(color: Colors.white54, fontSize: 14),
-                border: InputBorder.none,
-              ),
-            ),
-          ),
-        ],
+      child: TextField(
+        controller: controller,
+        style: const TextStyle(color: Colors.white),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.white54),
+          border: InputBorder.none,
+        ),
+        onSubmitted: (val) => _fetchBooks(query: val.trim()),
       ),
     );
   }

@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
-import 'return_confirmation.dart';
-import 'reserve_confirm.dart';
 
-class BookDetailPage extends StatelessWidget {
+import 'book_service.dart';
+import 'return_confirmation.dart';
+
+class BookDetailPage extends StatefulWidget {
+  final int? bookId;
   final String image, title, author, description;
   final bool available;
   final bool pdfAvailable;
-  // new: role and current borrowed count (frontend demo state)
   final String role;
   final int currentBorrowed;
+  final String? isbn;
+  final int? pages;
+  final int? year;
+  final String? publisher;
 
   const BookDetailPage({
     super.key,
+    this.bookId,
     required this.image,
     required this.title,
     required this.author,
@@ -20,12 +26,96 @@ class BookDetailPage extends StatelessWidget {
     this.pdfAvailable = true,
     this.role = 'Student',
     this.currentBorrowed = 0,
+    this.isbn,
+    this.pages,
+    this.year,
+    this.publisher,
   });
 
   @override
-  Widget build(BuildContext context) {
-    final cardColor = Theme.of(context).cardColor;
+  State<BookDetailPage> createState() => _BookDetailPageState();
+}
 
+class _BookDetailPageState extends State<BookDetailPage> {
+  bool? _isAvailable;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchBookStatus();
+  }
+
+  Future<void> _fetchBookStatus() async {
+    if (widget.isbn == null || widget.isbn!.isEmpty) {
+      setState(() {
+        _isAvailable = widget.available;
+        _isLoading = false;
+      });
+      return;
+    }
+
+    final status = await BookService.getBookStatus(widget.isbn!);
+    if (mounted) {
+      setState(() {
+        _isAvailable = status?.available ?? widget.available;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _borrow(BuildContext context) async {
+    if (widget.bookId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing book id for borrow action.')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final result = await BookService.borrowBook(bookId: widget.bookId!);
+    if (Navigator.canPop(context)) Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.ok ? Colors.green : Colors.redAccent,
+      ),
+    );
+    // Refresh status after borrowing
+    if (result.ok) _fetchBookStatus();
+  }
+
+  Future<void> _reserve(BuildContext context) async {
+    if (widget.bookId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing book id for reserve action.')),
+      );
+      return;
+    }
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+    final result = await BookService.reserveBook(bookId: widget.bookId!);
+    if (Navigator.canPop(context)) Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(result.message),
+        backgroundColor: result.ok ? Colors.green : Colors.redAccent,
+      ),
+    );
+    // Refresh status after reserving
+    if (result.ok) _fetchBookStatus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final available = _isAvailable ?? widget.available;
+    
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
@@ -40,47 +130,45 @@ class BookDetailPage extends StatelessWidget {
               const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Builder(
-                    builder: (ctx) {
-                      // Use the passed `image` if provided. Support both network URLs and local assets.
-                      final img = (image.trim().isEmpty)
-                          ? 'lib/assets/data_science.png'
-                          : image;
-                      if (img.startsWith('http')) {
-                        return Image.network(
-                          img,
-                          height: 300,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Image.asset(
-                                'lib/assets/data_science.png',
-                                height: 300,
-                                fit: BoxFit.cover,
-                              ),
-                        );
-                      }
-                      return Image.asset(
+                child: Builder(
+                  builder: (ctx) {
+                    final img = (widget.image.trim().isEmpty)
+                        ? 'lib/assets/data_science.png'
+                        : widget.image;
+                    if (img.startsWith('http')) {
+                      return Image.network(
                         img,
                         height: 300,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) =>
-                            const Icon(
-                              Icons.broken_image,
-                              size: 96,
-                              color: Colors.white70,
+                            Image.asset(
+                              'lib/assets/data_science.png',
+                              height: 300,
+                              fit: BoxFit.cover,
                             ),
                       );
-                    },
-                  ),
+                    }
+                    return Image.asset(
+                      img,
+                      height: 300,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(
+                            Icons.broken_image,
+                            size: 96,
+                            color: Colors.white70,
+                          ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -90,336 +178,196 @@ class BookDetailPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
+                    widget.title,
                     style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
                       fontSize: 24,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Row(
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
-                      // Availability pill (keep appearance like before but in a pill)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: available
-                              ? const Color(0xFF2E7D32)
-                              : Colors.grey,
-                          borderRadius: BorderRadius.circular(8),
+                          color: available ? Colors.green : Colors.grey,
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          available ? "Available Now" : "Currently Borrowed",
+                          available ? 'Available Now' : 'Currently Borrowed',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // Download PDF pill
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 16,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: pdfAvailable ? Colors.lightBlue : Colors.red,
-                          borderRadius: BorderRadius.circular(8),
+                          color: widget.pdfAvailable ? Colors.blue : Colors.red,
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
-                          pdfAvailable ? "Download PDF" : "pdf unavailable",
+                          widget.pdfAvailable ? 'Download PDF' : 'PDF unavailable',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      // Update PDF pill-shaped button (yellow)
-                      TextButton(
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.amber,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        onPressed: () {
+                      InkWell(
+                        onTap: () {
                           Navigator.pushNamed(
                             context,
                             '/upload-pdf',
-                            arguments: {'mode': 'update', 'bookTitle': title},
+                            arguments: {'mode': 'update', 'bookTitle': widget.title},
                           );
                         },
-                        child: const Text('Update PDF'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Update PDF',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   const Text(
                     "Description",
                     style: TextStyle(
-                      color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 18,
+                      fontSize: 16,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    description,
+                    widget.description,
                     style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 15,
+                      fontSize: 14,
                       height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Card(
-                    color: cardColor,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: const [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "ISBN",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                ),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C2D35),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            const Text(
+                              'ISBN',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                "978-3-16-148410-0",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.isbn ?? 'N/A',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
                               ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Pages",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Text(
+                              'Pages',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                "450",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.pages?.toString() ?? 'N/A',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
                               ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Year",
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 13,
-                                ),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Text(
+                              'Year',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 12,
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                "2023",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.year?.toString() ?? 'N/A',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: available
-                          ? () {
-                              // Role-based limits
-                              final roleLower = role.toLowerCase();
-                              final int maxDays = roleLower == 'student'
-                                  ? 7
-                                  : (roleLower == 'teacher' ||
-                                            roleLower == 'director'
-                                        ? 15
-                                        : 7);
-                              final int maxBooks = roleLower == 'student'
-                                  ? 2
-                                  : (roleLower == 'teacher' ||
-                                            roleLower == 'director'
-                                        ? 5
-                                        : 2);
-
-                              showDialog(
-                                context: context,
-                                builder: (context) {
-                                  int selectedDays = maxDays;
-                                  String errorMessage = '';
-                                  final bool atLimit =
-                                      currentBorrowed >= maxBooks;
-
-                                  return StatefulBuilder(
-                                    builder: (context, setState) {
-                                      return AlertDialog(
-                                        backgroundColor: cardColor,
-                                        title: const Text(
-                                          "Confirm Borrow",
-                                          style: TextStyle(color: Colors.white),
-                                        ),
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              "Do you want to borrow '$title'?",
-                                              style: const TextStyle(
-                                                color: Colors.white70,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              'Select duration (days):',
-                                              style: TextStyle(
-                                                color: Colors.white70,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            DropdownButton<int>(
-                                              value: selectedDays,
-                                              dropdownColor: cardColor,
-                                              items:
-                                                  List.generate(
-                                                        maxDays,
-                                                        (i) => i + 1,
-                                                      )
-                                                      .map(
-                                                        (d) => DropdownMenuItem(
-                                                          value: d,
-                                                          child: Text(
-                                                            '$d day${d > 1 ? "s" : ""}',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      )
-                                                      .toList(),
-                                              onChanged: (v) => setState(() {
-                                                selectedDays =
-                                                    v ?? selectedDays;
-                                              }),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'Role: $role — max $maxBooks book(s), max $maxDays days each',
-                                              style: TextStyle(
-                                                color: Colors.white54,
-                                                fontSize: 12,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 8),
-                                            if (atLimit)
-                                              Text(
-                                                'Borrowing limit reached: $currentBorrowed / $maxBooks',
-                                                style: TextStyle(
-                                                  color: Colors.redAccent,
-                                                ),
-                                              ),
-                                            if (errorMessage.isNotEmpty) ...[
-                                              const SizedBox(height: 8),
-                                              Text(
-                                                errorMessage,
-                                                style: TextStyle(
-                                                  color: Colors.redAccent,
-                                                ),
-                                              ),
-                                            ],
-                                          ],
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: const Text("Cancel"),
-                                          ),
-                                          ElevatedButton(
-                                            onPressed: atLimit
-                                                ? null
-                                                : () {
-                                                    // Basic frontend confirmation — in a real app you'd call an API and pass selectedDays
-                                                    Navigator.pop(context);
-                                                    Navigator.pushNamed(
-                                                      context,
-                                                      '/my-books',
-                                                    );
-                                                  },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: atLimit
-                                                  ? Colors.grey
-                                                  : Colors.blue,
-                                            ),
-                                            child: const Text(
-                                              "Confirm",
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            }
+                          ? () => _borrow(context)
                           : () {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) =>
-                                      ReturnConfirmationPage(bookTitle: title),
+                                      ReturnConfirmationPage(bookTitle: widget.title),
                                 ),
                               );
                             },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: available ? Colors.blue : Colors.white,
+                        backgroundColor: Colors.blue,
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: Text(
                         available ? "Borrow Book" : "Return Book",
-                        style: TextStyle(
-                          color: available ? Colors.white : Colors.black,
+                        style: const TextStyle(
+                          color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
@@ -428,28 +376,20 @@ class BookDetailPage extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ReserveConfirmPage(
-                              image: image,
-                              title: title,
-                              author: author,
-                            ),
-                          ),
-                        );
-                      },
+                      onPressed: () => _reserve(context),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF9C27B0),
+                        backgroundColor: Colors.purple,
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: const Text(
                         "Reserve Book",
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
