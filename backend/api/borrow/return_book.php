@@ -1,5 +1,7 @@
 <?php
 include_once '../../config/database.php';
+include_once '../lib/reservation_helpers.php';
+include_once '../lib/notification_helpers.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -23,10 +25,16 @@ try {
 
     // Locate active transaction
     if (!empty($transactionId)) {
-        $find = $db->prepare('SELECT transaction_id, copy_id, user_email, issue_date, due_date FROM approved_transactions WHERE transaction_id = :tid AND status = "Borrowed"');
+        $find = $db->prepare('SELECT at.transaction_id, at.copy_id, tr.requester_email, at.issue_date, at.due_date 
+            FROM Approved_Transactions at 
+            JOIN Transaction_Requests tr ON at.request_id = tr.request_id
+            WHERE at.transaction_id = :tid AND at.status = "Borrowed"');
         $find->execute([':tid' => $transactionId]);
     } else {
-        $find = $db->prepare('SELECT transaction_id, copy_id, user_email, issue_date, due_date FROM approved_transactions WHERE copy_id = :cid AND status = "Borrowed" ORDER BY issue_date DESC LIMIT 1');
+        $find = $db->prepare('SELECT at.transaction_id, at.copy_id, tr.requester_email, at.issue_date, at.due_date 
+            FROM Approved_Transactions at 
+            JOIN Transaction_Requests tr ON at.request_id = tr.request_id
+            WHERE at.copy_id = :cid AND at.status = "Borrowed" ORDER BY at.issue_date DESC LIMIT 1');
         $find->execute([':cid' => $copyId]);
     }
 
@@ -48,40 +56,56 @@ try {
     $daysOverdue = 0;
     if ($now > $due) {
         $daysOverdue = $now->diff($due)->days;
-        $fineAmount = $daysOverdue * 5; // 5 per day
+        $fineAmount = $daysOverdue * 10; // 10 BDT per day
     }
 
     // Close transaction
-    $close = $db->prepare('UPDATE approved_transactions SET status = "Returned", return_date = NOW(), updated_at = NOW() WHERE transaction_id = :tid');
+    $close = $db->prepare('UPDATE Approved_Transactions SET status = "Returned", return_date = NOW() WHERE transaction_id = :tid');
     $close->execute([':tid' => $txn['transaction_id']]);
 
     // Update copy status
-    $copyUpdate = $db->prepare('UPDATE book_copies SET status = "Available", updated_at = NOW() WHERE copy_id = :cid');
+    $copyUpdate = $db->prepare('UPDATE Book_Copies SET status = "Available" WHERE copy_id = :cid');
     $copyUpdate->execute([':cid' => $txn['copy_id']]);
 
-    // Increment availability on books
-    $isbnStmt = $db->prepare('SELECT isbn FROM book_copies WHERE copy_id = :cid');
-    $isbnStmt->execute([':cid' => $txn['copy_id']]);
-    $isbnRow = $isbnStmt->fetch(PDO::FETCH_ASSOC);
-    if ($isbnRow) {
-        $bookUpdate = $db->prepare('UPDATE books SET copies_available = copies_available + 1, updated_at = NOW() WHERE isbn = :isbn');
-        $bookUpdate->execute([':isbn' => $isbnRow['isbn']]);
+    // Mark return request as processed if it exists
+    $updateReturnRequest = $db->prepare('UPDATE Return_Requests 
+        SET status = "Processed", processed_at = NOW() 
+        WHERE transaction_id = :tid AND status = "Pending"');
+    $updateReturnRequest->execute([':tid' => $txn['transaction_id']]);
+
+    // Get ISBN and book title for notifications and reservation handling
+    $bookStmt = $db->prepare('SELECT bc.isbn, b.title FROM Book_Copies bc JOIN Books b ON bc.isbn = b.isbn WHERE bc.copy_id = :cid');
+    $bookStmt->execute([':cid' => $txn['copy_id']]);
+    $bookRow = $bookStmt->fetch(PDO::FETCH_ASSOC);
+
+    // When a copy becomes available, activate the 12-hour window for queue #1 (if any)
+    if ($bookRow && isset($bookRow['isbn'])) {
+        ensureReservationWindow($db, $bookRow['isbn']);
+    }
+
+    // Notify user that their return request has been approved/processed
+    if ($bookRow && isset($bookRow['title'])) {
+        try {
+            notifyReturnRequestApproved($db, $txn['requester_email'], $bookRow['title']);
+        } catch (Exception $e) {
+            // Non-blocking: log and continue
+            error_log('Return approval notification failed: ' . $e->getMessage());
+        }
     }
 
     // Record fine if overdue
     $fineId = null;
     if ($fineAmount > 0) {
-        $fineInsert = $db->prepare('INSERT INTO fines (
-            transaction_id, user_email, amount, fine_type, days_overdue, description, paid, created_at, updated_at
+        $fineInsert = $db->prepare('INSERT INTO Fines (
+            transaction_id, user_email, amount, description, paid
         ) VALUES (
-            :transaction_id, :user_email, :amount, "Late Return", :days_overdue, :description, 0, NOW(), NOW()
+            :transaction_id, :user_email, :amount, :description, 0
         )');
         $fineInsert->execute([
             ':transaction_id' => $txn['transaction_id'],
-            ':user_email' => $txn['user_email'],
+            ':user_email' => $txn['requester_email'],
             ':amount' => $fineAmount,
-            ':days_overdue' => $daysOverdue,
-            ':description' => 'Auto-generated late fee',
+            ':description' => "Late return: {$daysOverdue} days overdue",
         ]);
         $fineId = $db->lastInsertId();
     }

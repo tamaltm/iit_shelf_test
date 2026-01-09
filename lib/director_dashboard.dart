@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
-import 'book_resources.dart';
 import 'book_image.dart';
+import 'book_service.dart';
+import 'auth_service.dart';
+import 'payment_service.dart';
 
 class Book {
   final String image;
@@ -12,6 +14,8 @@ class Book {
   final Color dueColor;
   final String id;
 
+  final int? transactionId;
+
   Book({
     required this.image,
     required this.title,
@@ -19,6 +23,7 @@ class Book {
     required this.dueLabel,
     required this.dueColor,
     required this.id,
+    this.transactionId,
   });
 }
 
@@ -29,41 +34,114 @@ class DirectorDashboardPage extends StatefulWidget {
 }
 
 class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
-  final borrowedBooks = [
-    Book(
-      image: bookResources[0]['image']!,
-      title: bookResources[0]['title']!,
-      author: bookResources[0]['author']!,
-      dueLabel: 'Due: 2024-12-30',
-      dueColor: Colors.orange,
-      id: 'ID: 12345',
-    ),
-    Book(
-      image: bookResources[1]['image']!,
-      title: bookResources[1]['title']!,
-      author: bookResources[1]['author']!,
-      dueLabel: 'Due: 2024-12-25',
-      dueColor: Colors.red,
-      id: 'ID: 12346',
-    ),
-  ];
-
-  final recommendedBooks = List<Book>.generate(
-    bookResources.length,
-    (i) => Book(
-      image: bookResources[(i + 1) % bookResources.length]['image']!,
-      title: bookResources[(i + 1) % bookResources.length]['title']!,
-      author: bookResources[(i + 1) % bookResources.length]['author']!,
-      dueLabel: 'Available',
-      dueColor: Colors.green,
-      id: 'ID: ${20000 + i}',
-    ),
-  );
+  List<Book> _borrowedBooks = [];
+  List<Book> _recommendedBooks = [];
+  int _borrowedCount = 0;
+  int _overdueCount = 0;
+  double _outstandingFines = 0;
+  bool _isLoading = true;
 
   @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    final email = AuthService.getCurrentUserEmail();
+
+    if (email == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final borrowedResponse = await BookService.getUserTransactions(
+        email,
+        status: 'borrowed',
+      );
+      final allBooksResponse = await BookService.fetchBooks();
+      final fine = await PaymentService.fetchOutstandingFines();
+
+      if (!mounted) return;
+
+      setState(() {
+        _borrowedBooks = borrowedResponse
+            .map(
+              (transaction) => Book(
+                image: transaction['cover_image'] ?? '',
+                title: transaction['title'] ?? 'Unknown',
+                author: transaction['author'] ?? 'Unknown',
+                dueLabel: 'Due: ${transaction['due_date'] ?? 'N/A'}',
+                dueColor: _calculateDaysUntilDue(transaction['due_date']) < 0
+                    ? Colors.red
+                    : Colors.orange,
+                id: transaction['isbn'] ?? transaction['id'].toString(),
+                transactionId: transaction['id'] as int?,
+              ),
+            )
+            .take(2)
+            .toList();
+        _borrowedCount = borrowedResponse.length;
+        _overdueCount = borrowedResponse
+            .where(
+              (book) =>
+                  book['status'] == 'Overdue' || book['type'] == 'overdue',
+            )
+            .length;
+
+        _recommendedBooks = allBooksResponse
+            .map(
+              (book) => Book(
+                image: book.coverImage ?? '',
+                title: book.title,
+                author: book.author,
+                dueLabel: '${book.availableQuantity} available',
+                dueColor: book.isAvailable ? Colors.green : Colors.grey,
+                id: book.isbn ?? book.id.toString(),
+              ),
+            )
+            .toList();
+
+        _outstandingFines = fine?.totalOutstanding ?? 0;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  int _calculateDaysUntilDue(String? dueDate) {
+    if (dueDate == null || dueDate.isEmpty) return 0;
+    try {
+      final due = DateTime.parse(dueDate);
+      return due.difference(DateTime.now()).inDays;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
+
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: const CustomAppBar(userRole: 'director'),
+        body: const Center(child: CircularProgressIndicator()),
+        bottomNavigationBar: const RoleBottomNav(
+          currentIndex: 0,
+          role: 'director',
+        ),
+      );
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -79,7 +157,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 Expanded(
                   child: _buildStatCard(
                     "Books Borrowed",
-                    "2/5",
+                    "$_borrowedCount/5",
                     Icons.menu_book,
                     Colors.blue,
                   ),
@@ -88,7 +166,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                 Expanded(
                   child: _buildStatCard(
                     "Overdue",
-                    "0",
+                    "$_overdueCount",
                     Icons.warning_amber_rounded,
                     Colors.orange,
                   ),
@@ -139,7 +217,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              'BDT 150.00',
+                              'BDT ${_outstandingFines.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color:
                                     Theme.of(
@@ -243,9 +321,9 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               height: 250,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: recommendedBooks.length,
+                itemCount: _recommendedBooks.length,
                 itemBuilder: (context, index) {
-                  return _buildCarouselBookCard(recommendedBooks[index]);
+                  return _buildCarouselBookCard(_recommendedBooks[index]);
                 },
               ),
             ),
@@ -282,7 +360,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
             ),
             const SizedBox(height: 12),
 
-            ...borrowedBooks.map((book) => _buildBookCard(book)),
+            ..._borrowedBooks.map((book) => _buildBookCard(book)),
 
             const SizedBox(height: 16),
 
@@ -316,14 +394,6 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                   },
                 ),
                 _QuickButton(
-                  icon: Icons.upload_file_outlined,
-                  label: "Upload PDF",
-                  isSmallScreen: isSmallScreen,
-                  onTap: () {
-                    Navigator.pushNamed(context, '/upload-pdf');
-                  },
-                ),
-                _QuickButton(
                   icon: Icons.assessment,
                   label: "Generate Reports",
                   isSmallScreen: isSmallScreen,
@@ -331,18 +401,6 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
                     Navigator.pushNamed(
                       context,
                       '/generate-reports',
-                      arguments: {'userRole': 'director'},
-                    );
-                  },
-                ),
-                _QuickButton(
-                  icon: Icons.history,
-                  label: "Transaction History",
-                  isSmallScreen: isSmallScreen,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/transaction-history',
                       arguments: {'userRole': 'director'},
                     );
                   },
@@ -388,6 +446,7 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
               'image': book.image,
               'description': 'Explore more about ${book.title}.',
               'available': book.dueColor == Colors.green,
+              'isbn': book.id,
             },
           );
         },
@@ -489,149 +548,91 @@ class _DirectorDashboardPageState extends State<DirectorDashboardPage> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: BookImage(
-              book.image,
-              width: isSmallScreen ? 50 : 60,
-              height: isSmallScreen ? 75 : 90,
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/book-detail',
+          arguments: {
+            'title': book.title,
+            'author': book.author,
+            'image': book.image,
+            'isbn': book.id,
+          },
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: BookImage(
+                book.image,
+                width: isSmallScreen ? 50 : 60,
+                height: isSmallScreen ? 75 : 90,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          SizedBox(width: isSmallScreen ? 8 : 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  book.title,
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).textTheme.bodyLarge?.color ??
-                        Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: isSmallScreen ? 13 : 15,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  book.author,
-                  style: TextStyle(
-                    color:
-                        Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
-                        Colors.white60,
-                    fontSize: isSmallScreen ? 11 : 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 6 : 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: book.dueColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    book.dueLabel,
+            SizedBox(width: isSmallScreen ? 8 : 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.title,
                     style: TextStyle(
-                      color: book.dueColor,
-                      fontSize: isSmallScreen ? 10 : 12,
-                      fontWeight: FontWeight.w600,
+                      color:
+                          Theme.of(context).textTheme.bodyLarge?.color ??
+                          Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: isSmallScreen ? 13 : 15,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    book.author,
+                    style: TextStyle(
+                      color:
+                          Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                          Colors.white60,
+                      fontSize: isSmallScreen ? 11 : 13,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/return-details',
-                            arguments: {
-                              'title': book.title,
-                              'author': book.author,
-                              'image': book.image,
-                              'bookId': book.id,
-                              'dueDate': book.dueLabel,
-                            },
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A84FF),
-                          foregroundColor: Colors.white,
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 6 : 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          "Return",
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 11 : 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 6 : 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: book.dueColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      book.dueLabel,
+                      style: TextStyle(
+                        color: book.dueColor,
+                        fontSize: isSmallScreen ? 10 : 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(width: isSmallScreen ? 6 : 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/book-detail',
-                            arguments: {
-                              'title': book.title,
-                              'author': book.author,
-                              'image': book.image,
-                            },
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white24),
-                          padding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 6 : 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text(
-                          "Details",
-                          style: TextStyle(
-                            fontSize: isSmallScreen ? 11 : 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

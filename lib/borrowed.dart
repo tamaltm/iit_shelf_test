@@ -2,12 +2,57 @@ import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
-import 'book_resources.dart';
 import 'book_image.dart';
 import 'book_service.dart';
 
-class BorrowedBooksPage extends StatelessWidget {
+class BorrowedBooksPage extends StatefulWidget {
   const BorrowedBooksPage({super.key});
+
+  @override
+  State<BorrowedBooksPage> createState() => _BorrowedBooksPageState();
+}
+
+class _BorrowedBooksPageState extends State<BorrowedBooksPage> {
+  List<Map<String, dynamic>> _borrowedBooks = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBorrowedBooks();
+  }
+
+  Future<void> _loadBorrowedBooks() async {
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) {
+      setState(() {
+        _error = 'User not logged in';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await BookService.getUserTransactions(
+        email,
+        status: 'borrowed',
+      );
+      if (mounted) {
+        setState(() {
+          _borrowedBooks = response;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load borrowed books';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,27 +120,38 @@ class BorrowedBooksPage extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: [
-                BorrowedBookCard(
-                  image: bookResources[0]['image']!,
-                  title: bookResources[0]['title']!,
-                  author: bookResources[0]['author']!,
-                  id: "824(B)",
-                  borrowRecordId: 1,
-                  due: "Due in 2 days",
-                ),
-                BorrowedBookCard(
-                  image: bookResources[1]['image']!,
-                  title: bookResources[1]['title']!,
-                  author: bookResources[1]['author']!,
-                  id: "321(A)",
-                  borrowRecordId: 2,
-                  due: "Due in 5 days",
-                ),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  )
+                : _borrowedBooks.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No borrowed books',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _borrowedBooks.length,
+                    itemBuilder: (context, index) {
+                      final book = _borrowedBooks[index];
+                      return BorrowedBookCard(
+                        image: book['pic_path'] ?? '',
+                        title: book['title'] ?? 'Unknown Title',
+                        author: book['author'] ?? 'Unknown Author',
+                        id: book['copy_id'] ?? '',
+                        borrowRecordId: book['transaction_id'],
+                        due: book['due_date'] ?? '',
+                        isbn: book['isbn'],
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -135,6 +191,7 @@ class _TabButton extends StatelessWidget {
 
 class BorrowedBookCard extends StatelessWidget {
   final String image, title, author, id, due;
+  final String? isbn;
   final int? borrowRecordId;
 
   const BorrowedBookCard({
@@ -145,7 +202,63 @@ class BorrowedBookCard extends StatelessWidget {
     required this.id,
     required this.due,
     this.borrowRecordId,
+    this.isbn,
   });
+
+  Future<void> _returnBook(BuildContext context) async {
+    if (borrowRecordId == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Missing transaction ID')));
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Return'),
+        content: Text('Are you sure you want to return "$title"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.blue),
+            child: const Text('Return'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final result = await BookService.requestReturn(
+      transactionId: borrowRecordId!,
+    );
+
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.message),
+          backgroundColor: result.ok ? Colors.green : Colors.redAccent,
+        ),
+      );
+
+      if (result.ok) {
+        // No immediate return; librarian will approve.
+        Navigator.pushReplacementNamed(context, '/borrowed');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,8 +279,8 @@ class BorrowedBookCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: BookImage(
                     image,
-                    width: 54,
-                    height: 60,
+                    width: 90,
+                    height: 120,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -231,12 +344,12 @@ class BorrowedBookCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => _handleReturn(context),
+                    onPressed: () => _returnBook(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                     ),
                     child: const Text(
-                      "Return",
+                      "Request Return",
                       style: TextStyle(color: Colors.black),
                     ),
                   ),
@@ -256,6 +369,7 @@ class BorrowedBookCard extends StatelessWidget {
                           'title': title,
                           'author': author,
                           'image': image,
+                          if (isbn != null && isbn!.isNotEmpty) 'isbn': isbn,
                         },
                       );
                     },
@@ -275,62 +389,6 @@ class BorrowedBookCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Future<void> _handleReturn(BuildContext context) async {
-    int? returnId = borrowRecordId;
-
-    if (returnId == null) {
-      final controller = TextEditingController();
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF2C2D35),
-          title: const Text('Enter Borrow ID', style: TextStyle(color: Colors.white)),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(hintText: 'e.g. 12', hintStyle: TextStyle(color: Colors.white54)),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Submit'),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed != true) return;
-      returnId = int.tryParse(controller.text.trim());
-      if (returnId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Enter a valid borrow ID.')),
-        );
-        return;
-      }
-    }
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final res = await BookService.returnBook(borrowId: returnId);
-    if (Navigator.canPop(context)) Navigator.pop(context);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(res.message),
-        backgroundColor: res.ok ? Colors.green : Colors.redAccent,
       ),
     );
   }

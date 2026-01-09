@@ -3,6 +3,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__ . '/../../config/db_auth_temp.php';
+
 function json_input(): array {
     $raw = file_get_contents('php://input');
     if ($raw === false || $raw === '') {
@@ -22,11 +24,14 @@ function generate_otp(): string {
     return str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 }
 
-function issue_otp(PDO $db, string $email, string $purpose, int $cooldownSeconds = 60, int $ttlSeconds = 300): array {
+function issue_otp(string $email, string $purpose, int $cooldownSeconds = 60, int $ttlSeconds = 300): array {
     $email = strtolower(trim($email));
     $now = new DateTimeImmutable('now');
 
-    $coolStmt = $db->prepare("SELECT created_at FROM temp_user_verification WHERE email = :email AND purpose = :purpose ORDER BY created_at DESC LIMIT 1");
+    $authTempDb = new AuthTempDatabase();
+    $authDb = $authTempDb->connect();
+
+    $coolStmt = $authDb->prepare("SELECT created_at FROM Temp_User_Verification WHERE email = :email AND purpose = :purpose ORDER BY created_at DESC LIMIT 1");
     $coolStmt->execute([':email' => $email, ':purpose' => $purpose]);
     $last = $coolStmt->fetch(PDO::FETCH_ASSOC);
     if ($last && isset($last['created_at'])) {
@@ -40,10 +45,10 @@ function issue_otp(PDO $db, string $email, string $purpose, int $cooldownSeconds
     $otp = generate_otp();
     $expiresAt = $now->modify("+{$ttlSeconds} seconds");
 
-    $db->prepare("DELETE FROM temp_user_verification WHERE email = :email AND purpose = :purpose")
+    $authDb->prepare("DELETE FROM Temp_User_Verification WHERE email = :email AND purpose = :purpose")
         ->execute([':email' => $email, ':purpose' => $purpose]);
 
-    $ins = $db->prepare("INSERT INTO temp_user_verification (email, otp_code, purpose, created_at, expires_at) VALUES (:email, :otp, :purpose, :created_at, :expires_at)");
+    $ins = $authDb->prepare("INSERT INTO Temp_User_Verification (email, otp_code, purpose, created_at, expires_at) VALUES (:email, :otp, :purpose, :created_at, :expires_at)");
     $ins->execute([
         ':email' => $email,
         ':otp' => $otp,
@@ -55,10 +60,14 @@ function issue_otp(PDO $db, string $email, string $purpose, int $cooldownSeconds
     return ['ok' => true, 'otp' => $otp];
 }
 
-function validate_otp(PDO $db, string $email, string $purpose, string $otp): array {
+function validate_otp(string $email, string $purpose, string $otp): array {
     $email = strtolower(trim($email));
     $otp = trim($otp);
-    $stmt = $db->prepare("SELECT otp_code, expires_at FROM temp_user_verification WHERE email = :email AND purpose = :purpose ORDER BY created_at DESC LIMIT 1");
+    
+    $authTempDb = new AuthTempDatabase();
+    $authDb = $authTempDb->connect();
+    
+    $stmt = $authDb->prepare("SELECT otp_code, expires_at FROM Temp_User_Verification WHERE email = :email AND purpose = :purpose ORDER BY created_at DESC LIMIT 1");
     $stmt->execute([':email' => $email, ':purpose' => $purpose]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$row) {

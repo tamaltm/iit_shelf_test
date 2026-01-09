@@ -1,0 +1,1 @@
+placeholder asset to satisfy Flutter asset directory presence

@@ -24,8 +24,8 @@ if ($email === '') {
 
 // Get user profile
 $stmt = $db->prepare('
-    SELECT email, name, phone, role, profile_image, is_active, email_verified_at, created_at, last_login
-    FROM users 
+    SELECT email, name, contact, role, profile_image, created_at, last_login
+    FROM Users 
     WHERE email = :email
 ');
 $stmt->execute([':email' => $email]);
@@ -44,9 +44,29 @@ if (!$user) {
 $profileImageUrl = null;
 if (!empty($user['profile_image'])) {
     // Image is stored as "uploads/profiles/filename.jpg"
-    // API is at /api/auth/get_profile.php
-    // So we go up 2 levels: ../../uploads/profiles/filename.jpg
     $profileImageUrl = 'http://localhost:8000/auth/get_image.php?path=' . urlencode($user['profile_image']);
+}
+
+// Role-specific data: add designation for teachers, roll/session for students
+$roleSpecific = [];
+if (!empty($user['role'])) {
+    $role = strtolower($user['role']);
+    if ($role === 'teacher') {
+        $tStmt = $db->prepare('SELECT designation FROM Teachers WHERE email = :email');
+        $tStmt->execute([':email' => $email]);
+        $t = $tStmt->fetch(PDO::FETCH_ASSOC);
+        if ($t && isset($t['designation'])) {
+            $roleSpecific['designation'] = $t['designation'];
+        }
+    } elseif ($role === 'student') {
+        $sStmt = $db->prepare('SELECT roll, session FROM Students WHERE email = :email');
+        $sStmt->execute([':email' => $email]);
+        $s = $sStmt->fetch(PDO::FETCH_ASSOC);
+        if ($s) {
+            if (isset($s['roll'])) $roleSpecific['roll'] = $s['roll'];
+            if (isset($s['session'])) $roleSpecific['session'] = $s['session'];
+        }
+    }
 }
 
 // Return user profile
@@ -55,13 +75,14 @@ echo json_encode([
     'success' => true,
     'user' => [
         'email' => $user['email'],
-        'name' => $user['name'] ?? '',
-        'phone' => $user['phone'] ?? '',
+        'name' => $user['name'] ?? 'User',
+        'phone' => $user['contact'] ?? 'Not provided',  // Map contact to phone for app
+        'contact' => $user['contact'] ?? '',  // Also include contact
         'role' => $user['role'] ?? '',
         'profile_image' => $profileImageUrl,
-        'is_active' => (bool)$user['is_active'],
-        'email_verified' => !empty($user['email_verified_at']),
         'created_at' => $user['created_at'],
-        'last_login' => $user['last_login'] ?? null
+        'last_login' => $user['last_login'] ?? null,
+        // include role-specific fields flat for convenience
+        ...$roleSpecific,
     ]
 ]);

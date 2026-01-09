@@ -33,6 +33,7 @@ dependencies:
 
   # Networking
   http: ^1.2.1
+  url_launcher: ^6.2.5
 
   # Local storage
   shared_preferences: ^2.2.2
@@ -41,6 +42,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   image_picker: ^0.8.7+5
+  file_picker: ^8.0.0
+  path_provider: ^2.1.1
+  permission_handler: ^11.1.0
 
 dev_dependencies:
   flutter_test:
@@ -63,10 +67,6 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
-
-  # App assets
-  assets:
-    - lib/assets/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

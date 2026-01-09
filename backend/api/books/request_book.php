@@ -28,16 +28,18 @@ if ($title === '' || empty($userEmail)) {
 }
 
 try {
-    $stmt = $db->prepare('INSERT INTO requests (
-        requester_email, isbn, title, author, category, publisher, publication_year,
-        edition, description, pic_path, pdf_path, status, priority, created_at
-    ) VALUES (
-        :requester_email, :isbn, :title, :author, :category, :publisher, :publication_year,
-        :edition, :description, :pic_path, :pdf_path, "Pending", :priority, NOW()
-    )');
+
+        // Use team schema table and column names (Requests, requester_identifier)
+        $stmt = $db->prepare('INSERT INTO Requests (
+            requester_identifier, isbn, title, author, category, publisher, publication_year,
+            edition, description, pic_path, pdf_path, status
+        ) VALUES (
+            :requester_identifier, :isbn, :title, :author, :category, :publisher, :publication_year,
+            :edition, :description, :pic_path, :pdf_path, "Pending"
+        )');
 
     $stmt->execute([
-        ':requester_email' => $userEmail,
+        ':requester_identifier' => $userEmail,
         ':isbn' => $payload->isbn ?? null,
         ':title' => $title,
         ':author' => $author,
@@ -48,7 +50,6 @@ try {
         ':description' => $description,
         ':pic_path' => $pic_path,
         ':pdf_path' => $pdf_path,
-        ':priority' => $priority,
     ]);
 
     http_response_code(201);

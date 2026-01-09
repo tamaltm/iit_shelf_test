@@ -18,7 +18,7 @@ if (empty($reservationId)) {
 }
 
 try {
-    $stmt = $db->prepare('UPDATE reservations SET status = "Cancelled", updated_at = NOW() WHERE reservation_id = :id AND status = "Active"');
+    $stmt = $db->prepare('UPDATE Reservations SET status = "Cancelled" WHERE reservation_id = :id AND status = "Active"');
     $stmt->bindParam(':id', $reservationId, PDO::PARAM_INT);
     $stmt->execute();
 

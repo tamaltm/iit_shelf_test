@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'custom_app_bar.dart';
+import 'book_service.dart';
 
 class LibrarianRequestsPage extends StatefulWidget {
   const LibrarianRequestsPage({super.key});
@@ -8,19 +13,143 @@ class LibrarianRequestsPage extends StatefulWidget {
   State<LibrarianRequestsPage> createState() => _LibrarianRequestsPageState();
 }
 
-class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with SingleTickerProviderStateMixin {
+class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+
+  // Data lists
+  List<Map<String, dynamic>> _borrowRequests = [];
+  List<Map<String, dynamic>> _returnRequests = [];
+  List<Map<String, dynamic>> _reserveRequests = [];
+  List<Map<String, dynamic>> _additionRequests = [];
+
+  bool _approvingBorrow = false;
+
+  bool _loading = true;
+  String? _error;
+
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (Platform.isAndroid) return 'http://32.0.2.182:8000';
+    return 'http://localhost:8000';
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _loadAll();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAll() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final search = _searchController.text.trim();
+      final borrow = await _fetch('borrow', search);
+      final ret = await _fetch('return', search);
+      final reserve = await _fetch('reserve', search);
+      final addition = await _fetch('addition', search);
+
+      if (!mounted) return;
+      setState(() {
+        _borrowRequests = borrow;
+        _returnRequests = ret;
+        _reserveRequests = reserve;
+        _additionRequests = addition;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Failed to load requests: $e';
+        _loading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_error!)));
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetch(String type, String search) async {
+    final uri = Uri.parse('$_baseUrl/librarian/get_requests.php').replace(
+      queryParameters: {'type': type, if (search.isNotEmpty) 'search': search},
+    );
+    final resp = await http.get(uri);
+    if (resp.statusCode >= 200 && resp.statusCode < 300) {
+      final decoded = json.decode(resp.body) as Map<String, dynamic>;
+      if (decoded['success'] == true && decoded['items'] is List) {
+        return (decoded['items'] as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      }
+      throw decoded['message'] ?? 'Unknown error';
+    }
+    throw 'HTTP ${resp.statusCode}';
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchAvailableCopies(String isbn) async {
+    final uri = Uri.parse('$_baseUrl/librarian/get_available_copies.php')
+        .replace(queryParameters: {'isbn': isbn});
+    final resp = await http.get(uri);
+    final decoded = json.decode(resp.body) as Map<String, dynamic>;
+    if (resp.statusCode >= 200 &&
+        resp.statusCode < 300 &&
+        decoded['success'] == true &&
+        decoded['copies'] is List) {
+      return (decoded['copies'] as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    }
+    throw decoded['message'] ?? 'Failed to load copies';
+  }
+
+  Future<void> _approveBorrowWithCopy(int requestId, String copyId) async {
+    final uri = Uri.parse('$_baseUrl/librarian/approve_borrow_request.php');
+    final resp = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'request_id': requestId, 'copy_id': copyId}),
+    );
+    final decoded = json.decode(resp.body);
+    if (resp.statusCode >= 200 &&
+        resp.statusCode < 300 &&
+        decoded['success'] == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(
+        SnackBar(
+          content: Text('Approved. Copy ${decoded['copy_id'] ?? copyId} issued'),
+        ),
+      );
+      await _loadAll();
+    } else {
+      throw decoded['message'] ?? 'Failed to approve';
+    }
+  }
+
+  Future<void> _approveReturn(int transactionId) async {
+    final res = await BookService.returnBook(transactionId: transactionId);
+    if (!mounted) return;
+    if (res.ok) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Return approved')));
+      await _loadAll();
+    } else {
+      throw res.message;
+    }
   }
 
   @override
@@ -72,6 +201,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
                       borderSide: BorderSide.none,
                     ),
                   ),
+                  controller: _searchController,
+                  onSubmitted: (_) => _loadAll(),
                 ),
               ],
             ),
@@ -80,10 +211,18 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildBorrowTab(),
-                _buildReturnTab(),
-                _buildReserveTab(),
-                _buildAdditionTab(),
+                _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildBorrowTab(),
+                _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildReturnTab(),
+                _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildReserveTab(),
+                _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _buildAdditionTab(),
               ],
             ),
           ),
@@ -94,75 +233,260 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
   }
 
   Widget _buildBorrowTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildBorrowRequestCard(
-          "John Doe",
-          "john.doe@example.com",
-          "Request to Borrow",
-          "Database Management",
-          "234612AB",
-          "2 hours ago",
+    if (_borrowRequests.isEmpty) {
+      return const Center(
+        child: Text(
+          'No pending borrow requests',
+          style: TextStyle(color: Colors.white70),
         ),
-      ],
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _borrowRequests.length,
+      itemBuilder: (context, index) {
+        final r = _borrowRequests[index];
+        
+        // Calculate expiration info
+        final hoursRemaining = r['expires_in_hours'] ?? 0;
+        final minutesRemaining = r['expires_in_minutes'] ?? 0;
+        final isExpired = r['is_expired'] ?? false;
+        
+        String expirationText = '';
+        if (isExpired) {
+          expirationText = 'EXPIRED';
+        } else if (hoursRemaining > 0) {
+          expirationText = 'Expires in ${hoursRemaining}h ${minutesRemaining}m';
+        } else {
+          expirationText = 'Expires in ${minutesRemaining}m';
+        }
+        
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildBorrowRequestCard(
+            r['name'] ?? 'User',
+            r['email'] ?? '',
+            'Request to Borrow',
+            r['title'] ?? 'Unknown',
+            r['isbn'] ?? '',
+            _timeAgo(r['request_date']),
+            expirationText: expirationText,
+            isExpired: isExpired,
+            onApprove: () => _promptCopySelection(r),
+          ),
+        );
+      },
     );
   }
 
+  Future<void> _promptCopySelection(Map<String, dynamic> request) async {
+    if (_approvingBorrow) return;
+    final isbn = request['isbn']?.toString() ?? '';
+    final requestId = int.tryParse(request['request_id']?.toString() ?? '');
+
+    if (isbn.isEmpty || requestId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request data missing ISBN or ID')),
+      );
+      return;
+    }
+
+    setState(() {
+      _approvingBorrow = true;
+    });
+
+    try {
+      final copies = await _fetchAvailableCopies(isbn);
+
+      if (!mounted) return;
+
+      if (copies.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No available copies to lend.')),
+        );
+        return;
+      }
+
+      final selected = await showDialog<String>(
+        context: context,
+        builder: (context) {
+          String current = copies.first['copy_id']?.toString() ?? '';
+          return AlertDialog(
+            backgroundColor: const Color(0xFF2C2D35),
+            title: const Text(
+              'Select Copy',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: StatefulBuilder(
+              builder: (context, setStateDialog) {
+                return DropdownButtonFormField<String>(
+                  value: current.isNotEmpty ? current : null,
+                  dropdownColor: const Color(0xFF2C2D35),
+                  decoration: const InputDecoration(
+                    labelText: 'Copy ID',
+                    labelStyle: TextStyle(color: Colors.white70),
+                    enabledBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Colors.white38),
+                    ),
+                    focusedBorder: UnderlineInputBorder(
+                      borderSide: BorderSide(color: Color(0xFF0A84FF)),
+                    ),
+                  ),
+                  iconEnabledColor: Colors.white,
+                  style: const TextStyle(color: Colors.white),
+                  items: copies.map((c) {
+                    final cid = c['copy_id']?.toString() ?? '';
+                    final shelf = c['shelf_id']?.toString() ?? '';
+                    final compartment = c['compartment_no']?.toString() ?? '';
+                    final sub = c['subcompartment_no']?.toString() ?? '';
+                    final label = [
+                      cid,
+                      if (shelf.isNotEmpty) 'Shelf $shelf',
+                      if (compartment.isNotEmpty) 'Comp $compartment',
+                      if (sub.isNotEmpty) 'Sub $sub',
+                    ].join(' · ');
+                    return DropdownMenuItem<String>(
+                      value: cid,
+                      child: Text(label),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    setStateDialog(() {
+                      current = val ?? '';
+                    });
+                  },
+                );
+              },
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(null),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(current),
+                child: const Text('Approve'),
+              ),
+            ],
+          );
+        },
+      );
+
+      if (!mounted) return;
+
+      if (selected != null && selected.isNotEmpty) {
+        await _approveBorrowWithCopy(requestId, selected);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not approve: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _approvingBorrow = false;
+        });
+      }
+    }
+  }
+
   Widget _buildReturnTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildReturnRequestCard(
-          "Sarah Johnson",
-          "sarah.johnson@example.com",
-          "Request to Return",
-          "Database Management",
-          "234612AB",
-          "BDT 0.00",
-          "2 hours ago",
+    if (_returnRequests.isEmpty) {
+      return const Center(
+        child: Text(
+          'No return approvals pending',
+          style: TextStyle(color: Colors.white70),
         ),
-      ],
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _returnRequests.length,
+      itemBuilder: (context, index) {
+        final r = _returnRequests[index];
+        final fine =
+            (r['days_overdue'] is int
+                ? r['days_overdue']
+                : int.tryParse(r['days_overdue']?.toString() ?? '0')) ??
+            0;
+        final fineTk = (fine * 5).toStringAsFixed(2);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildReturnRequestCard(
+            r['name'] ?? 'User',
+            r['email'] ?? '',
+            'Request to Return',
+            r['title'] ?? 'Unknown',
+            r['isbn'] ?? '',
+            'BDT $fineTk',
+            _timeAgo(r['due_date']),
+            onApprove: () =>
+                _approveReturn(int.parse(r['transaction_id'].toString())),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildReserveTab() {
-    return ListView(
+    if (_reserveRequests.isEmpty) {
+      return const Center(
+        child: Text(
+          'No active reservations',
+          style: TextStyle(color: Colors.white70),
+        ),
+      );
+    }
+    return ListView.builder(
       padding: const EdgeInsets.all(16),
-      children: [
-        _buildReserveRequestCard(
-          "Mike Chen",
-          "mike.chen@example.com",
-          "Joined Queue in 4",
-          "Database Management",
-          "234612AB",
-          "2 hours ago",
-        ),
-        const SizedBox(height: 12),
-        _buildReserveRequestCard(
-          "Emma Wilson",
-          "emma.wilson@example.com",
-          "Joined Queue in 3",
-          "Database Management",
-          "234612AB",
-          "3 hours ago",
-        ),
-      ],
+      itemCount: _reserveRequests.length,
+      itemBuilder: (context, index) {
+        final r = _reserveRequests[index];
+        final pos = r['queue_position']?.toString() ?? '-';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildReserveRequestCard(
+            r['name'] ?? 'User',
+            r['email'] ?? '',
+            'Joined Queue at $pos',
+            r['title'] ?? 'Unknown',
+            r['isbn'] ?? '',
+            _timeAgo(r['created_at']),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildAdditionTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _buildAdditionRequestCard(
-          "Alex Brown",
-          "alex.brown@example.com",
-          "Request to Add",
-          "System Engineering",
-          "2 hours ago",
+    if (_additionRequests.isEmpty) {
+      return const Center(
+        child: Text(
+          'No pending addition requests',
+          style: TextStyle(color: Colors.white70),
         ),
-      ],
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _additionRequests.length,
+      itemBuilder: (context, index) {
+        final r = _additionRequests[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildAdditionRequestCard(
+            r['name'] ?? 'User',
+            r['email'] ?? r['email'] ?? '',
+            'Request to Add',
+            r['requested_title'] ?? r['title'] ?? 'Unknown',
+            _timeAgo(
+              r['approved_at'] ?? r['created_at'] ?? DateTime.now().toString(),
+            ),
+            requestId: r['request_id'],
+          ),
+        );
+      },
     );
   }
 
@@ -172,20 +496,28 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
     String requestType,
     String bookName,
     String isbn,
-    String time,
-  ) {
+    String time, {
+    String? expirationText,
+    bool isExpired = false,
+    VoidCallback? onApprove,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: const Color(0xFF2C2D35),
         borderRadius: BorderRadius.circular(12),
+        border: isExpired ? Border.all(color: Colors.red, width: 2) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: Color(0xFF0A84FF), size: 20),
+              Icon(
+                isExpired ? Icons.warning : Icons.info_outline,
+                color: isExpired ? Colors.red : const Color(0xFF0A84FF),
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -209,44 +541,48 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
                   ],
                 ),
               ),
-              Text(
-                time,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    time,
+                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  if (expirationText != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      expirationText,
+                      style: TextStyle(
+                        color: isExpired ? Colors.red : Colors.orange,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             requestType,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "Book Name: $bookName",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "ISBN: $isbn",
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: onApprove,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0A84FF),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -276,8 +612,9 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
     String bookName,
     String isbn,
     String fine,
-    String time,
-  ) {
+    String time, {
+    VoidCallback? onApprove,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -289,7 +626,11 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: Color(0xFF0A84FF), size: 20),
+              const Icon(
+                Icons.info_outline,
+                color: Color(0xFF0A84FF),
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -315,44 +656,29 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               ),
               Text(
                 time,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             requestType,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "Book Name: $bookName",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "ISBN: $isbn",
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 4),
           Text(
             "Late Fine: $fine",
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 16),
           Row(
@@ -369,10 +695,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
                   ),
                   child: const Text(
                     "Damaged Fine (If any)",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
               ),
@@ -382,7 +705,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {},
+              onPressed: onApprove,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF0A84FF),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -424,7 +747,11 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
         children: [
           Row(
             children: [
-              const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+              const Icon(
+                Icons.check_circle_outline,
+                color: Colors.green,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -450,36 +777,24 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               ),
               Text(
                 time,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             queueInfo,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "Book Name: $bookName",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "ISBN: $isbn",
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 16),
           SizedBox(
@@ -508,13 +823,28 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
     );
   }
 
+  String _timeAgo(dynamic ts) {
+    if (ts == null) return 'Recently';
+    try {
+      final d = DateTime.parse(ts.toString());
+      final diff = DateTime.now().difference(d);
+      if (diff.inMinutes < 1) return 'Just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} minutes ago';
+      if (diff.inHours < 24) return '${diff.inHours} hours ago';
+      return '${diff.inDays} days ago';
+    } catch (_) {
+      return 'Recently';
+    }
+  }
+
   Widget _buildAdditionRequestCard(
     String userName,
     String userEmail,
     String requestType,
     String bookName,
-    String time,
-  ) {
+    String time, {
+    dynamic requestId,
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -526,7 +856,11 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
         children: [
           Row(
             children: [
-              const Icon(Icons.info_outline, color: Color(0xFF0A84FF), size: 20),
+              const Icon(
+                Icons.info_outline,
+                color: Color(0xFF0A84FF),
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Column(
@@ -552,34 +886,35 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               ),
               Text(
                 time,
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 12,
-                ),
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             requestType,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "Book Name: $bookName",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 14),
           ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
-              onPressed: () {},
+              onPressed: requestId != null
+                  ? () {
+                      Navigator.pushNamed(
+                        context,
+                        '/librarian-addition-request-details',
+                        arguments: {
+                          'request_id': requestId,
+                        },
+                      );
+                    }
+                  : null,
               style: OutlinedButton.styleFrom(
                 side: const BorderSide(color: Colors.white54),
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -623,15 +958,31 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage> with Sing
               _buildNavItem(Icons.dashboard, "Dashboard", activeIndex == 0, () {
                 Navigator.pushReplacementNamed(context, '/librarian-dashboard');
               }),
-              _buildNavItem(Icons.inventory_2, "Inventory", activeIndex == 1, () {
-                Navigator.pushReplacementNamed(context, '/librarian-inventory');
-              }),
+              _buildNavItem(
+                Icons.inventory_2,
+                "Inventory",
+                activeIndex == 1,
+                () {
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/librarian-inventory',
+                  );
+                },
+              ),
               _buildNavItem(Icons.assessment, "Reports", activeIndex == 2, () {
                 Navigator.pushReplacementNamed(context, '/librarian-reports');
               }),
-              _buildNavItem(Icons.request_page, "Requests", activeIndex == 3, () {
-                Navigator.pushReplacementNamed(context, '/librarian-requests');
-              }),
+              _buildNavItem(
+                Icons.request_page,
+                "Requests",
+                activeIndex == 3,
+                () {
+                  Navigator.pushReplacementNamed(
+                    context,
+                    '/librarian-requests',
+                  );
+                },
+              ),
               _buildNavItem(Icons.person, "Profile", activeIndex == 4, () {
                 Navigator.pushReplacementNamed(context, '/librarian-profile');
               }),

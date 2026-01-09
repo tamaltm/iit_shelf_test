@@ -19,6 +19,7 @@ import 'teacher_profile.dart';
 import 'librarian_reports.dart';
 import 'librarian_inventory.dart';
 import 'librarian_requests.dart';
+import 'librarian_addition_request_details.dart';
 import 'general_notices.dart';
 import 'auth_service.dart';
 import 'director_dashboard.dart';
@@ -98,6 +99,11 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/teacher-library': (context) => const TeacherLibraryPage(),
         '/teacher-my-books': (context) => const TeacherMyBooksPage(),
         '/librarian-dashboard': (context) => const LibrarianDashboardPage(),
+        '/librarian-addition-request-details': (context) {
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final rid = int.tryParse('${args?['request_id']}') ?? 0;
+          return LibrarianAdditionRequestDetailsPage(requestId: rid);
+        },
         '/librarian-profile': (context) => const LibrarianProfilePage(),
         '/librarian-reports': (context) => const LibrarianReportsPage(),
         '/librarian-inventory': (context) => const LibrarianInventoryPage(),
@@ -173,6 +179,9 @@ class _IITShelfAppState extends State<IITShelfApp> {
             description: args?['description'] ?? 'No description available.',
             available: args?['available'] ?? true,
             pdfAvailable: args?['pdfAvailable'] ?? true,
+            pdfUrl: args?['pdfUrl'],
+            isbn: args?['isbn'],
+            courseId: args?['courseId'],
           );
         },
         '/return-details': (context) {

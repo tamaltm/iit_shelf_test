@@ -6,30 +6,37 @@ $db = $database->getConnection();
 
 $payload = json_decode(file_get_contents('php://input'));
 
-$bookId = $payload->book_id ?? null;
-$pdfUrl = $payload->pdf_url ?? '';
+$isbn = $payload->isbn ?? null;
+$pdfPath = $payload->pdf_path ?? '';
+$fileName = $payload->file_name ?? 'document.pdf';
 
-if (empty($bookId) || $pdfUrl === '') {
+if (empty($isbn) || $pdfPath === '') {
     http_response_code(400);
     echo json_encode([
         'success' => false,
-        'message' => 'Book ID and pdf_url are required',
+        'message' => 'ISBN and pdf_path are required',
     ]);
     exit;
 }
 
 try {
-    $stmt = $db->prepare('UPDATE books SET pdf_url = :pdf_url, updated_at = NOW() WHERE id = :id');
-    $stmt->bindParam(':pdf_url', $pdfUrl);
-    $stmt->bindParam(':id', $bookId, PDO::PARAM_INT);
-    $stmt->execute();
+    $stmt = $db->prepare('INSERT INTO Digital_Resources (
+        isbn, file_name, file_path, resource_type, uploaded_at
+    ) VALUES (
+        :isbn, :file_name, :file_path, "PDF", NOW()
+    )');
+    $stmt->execute([
+        ':isbn' => $isbn,
+        ':file_name' => $fileName,
+        ':file_path' => $pdfPath,
+    ]);
 
-    if ($stmt->rowCount() > 0) {
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'message' => 'PDF link updated successfully',
-        ]);
+    http_response_code(201);
+    echo json_encode([
+        'success' => true,
+        'message' => 'PDF resource added successfully',
+        'resource_id' => $db->lastInsertId(),
+    ]);
     } else {
         http_response_code(404);
         echo json_encode([

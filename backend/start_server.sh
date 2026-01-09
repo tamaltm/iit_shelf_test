@@ -17,7 +17,12 @@ fi
 # Check if database exists
 if ! sudo mariadb -e "USE iit_shelf;" 2>/dev/null; then
     echo "Database not found. Creating database..."
-    sudo mariadb < database/schema.sql
+    SCHEMA_PATH="$(dirname "$0")/database/schema.sql"
+    if [ -f "$SCHEMA_PATH" ]; then
+        sudo mariadb < "$SCHEMA_PATH"
+    else
+        echo "WARNING: Schema file not found at $SCHEMA_PATH"
+    fi
 fi
 
 # Kill any existing PHP server
@@ -27,10 +32,10 @@ if pgrep -f "php -S.*8000" > /dev/null; then
     sleep 1
 fi
 
-# Start PHP development server
+# Start PHP development server with router.php
 echo "Starting PHP development server on http://localhost:8000..."
 cd "$(dirname "$0")"
-nohup php -S 0.0.0.0:8000 > /tmp/php_server.log 2>&1 &
+nohup php -S 0.0.0.0:8000 router.php > /tmp/php_server.log 2>&1 &
 
 sleep 2
 

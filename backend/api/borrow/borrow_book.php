@@ -8,7 +8,6 @@ $data = json_decode(file_get_contents('php://input'));
 
 $userEmail = $data->user_email ?? null;
 $isbn = $data->isbn ?? null;
-$loanDays = isset($data->loan_days) ? (int)$data->loan_days : 14;
 
 if (empty($isbn) || empty($userEmail)) {
     http_response_code(400);
@@ -20,8 +19,32 @@ if (empty($isbn) || empty($userEmail)) {
 }
 
 try {
+    // Get user role to determine loan period
+    $userStmt = $db->prepare('SELECT role FROM Users WHERE email = :email');
+    $userStmt->execute([':email' => $userEmail]);
+    $user = $userStmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode([
+            'success' => false,
+            'message' => 'User not found',
+        ]);
+        exit;
+    }
+
+    // Set loan days based on role
+    $role = strtolower($user['role']);
+    $loanDays = match($role) {
+        'student' => 7,
+        'teacher' => 15,
+        'librarian' => 30,
+        'director' => 30,
+        default => 14,
+    };
+
     // Check available copy
-    $copyStmt = $db->prepare('SELECT copy_id FROM book_copies WHERE isbn = :isbn AND status = "Available" AND is_deleted = 0 LIMIT 1');
+    $copyStmt = $db->prepare('SELECT copy_id FROM Book_Copies WHERE isbn = :isbn AND status = "Available" LIMIT 1');
     $copyStmt->execute([':isbn' => $isbn]);
     $copy = $copyStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -38,26 +61,34 @@ try {
 
     $db->beginTransaction();
 
-    // Create approved transaction
-    $txn = $db->prepare('INSERT INTO approved_transactions (
-        request_id, copy_id, user_email, issue_date, due_date, status, created_at, updated_at
+    // Create transaction request
+    $reqStmt = $db->prepare('INSERT INTO Transaction_Requests (
+        isbn, requester_email, request_date, status
     ) VALUES (
-        NULL, :copy_id, :user_email, NOW(), DATE_ADD(NOW(), INTERVAL :loan_days DAY), "Borrowed", NOW(), NOW()
+        :isbn, :requester_email, NOW(), "Approved"
+    )');
+    $reqStmt->execute([
+        ':isbn' => $isbn,
+        ':requester_email' => $userEmail,
+    ]);
+    $requestId = $db->lastInsertId();
+
+    // Create approved transaction
+    $txn = $db->prepare('INSERT INTO Approved_Transactions (
+        request_id, copy_id, issue_date, due_date, status
+    ) VALUES (
+        :request_id, :copy_id, NOW(), DATE_ADD(NOW(), INTERVAL :loan_days DAY), "Borrowed"
     )');
 
     $txn->execute([
+        ':request_id' => $requestId,
         ':copy_id' => $copyId,
-        ':user_email' => $userEmail,
         ':loan_days' => $loanDays,
     ]);
 
     // Update copy status
-    $copyUpdate = $db->prepare('UPDATE book_copies SET status = "Borrowed", updated_at = NOW() WHERE copy_id = :copy_id');
+    $copyUpdate = $db->prepare('UPDATE Book_Copies SET status = "Borrowed" WHERE copy_id = :copy_id');
     $copyUpdate->execute([':copy_id' => $copyId]);
-
-    // Update book availability
-    $bookUpdate = $db->prepare('UPDATE books SET copies_available = GREATEST(copies_available - 1, 0), updated_at = NOW() WHERE isbn = :isbn');
-    $bookUpdate->execute([':isbn' => $isbn]);
 
     $db->commit();
 

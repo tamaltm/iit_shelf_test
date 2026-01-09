@@ -19,8 +19,8 @@ if (empty($isbn) || empty($userEmail)) {
 }
 
 try {
-    // Ensure book exists and not deleted
-    $bookCheck = $db->prepare('SELECT isbn FROM books WHERE isbn = :isbn AND is_deleted = 0');
+    // Ensure book exists
+    $bookCheck = $db->prepare('SELECT isbn FROM Books WHERE isbn = :isbn');
     $bookCheck->execute([':isbn' => $isbn]);
     if (!$bookCheck->fetch(PDO::FETCH_ASSOC)) {
         http_response_code(404);
@@ -32,7 +32,7 @@ try {
     }
 
     // Prevent duplicate active reservation
-    $dup = $db->prepare('SELECT reservation_id FROM reservations WHERE isbn = :isbn AND user_email = :user_email AND status = "Active"');
+    $dup = $db->prepare('SELECT reservation_id FROM Reservations WHERE isbn = :isbn AND user_email = :user_email AND status = "Active"');
     $dup->execute([
         ':isbn' => $isbn,
         ':user_email' => $userEmail,
@@ -47,11 +47,11 @@ try {
     }
 
     // Determine queue position
-    $queueStmt = $db->prepare('SELECT IFNULL(MAX(queue_position),0) as pos FROM reservations WHERE isbn = :isbn AND status = "Active"');
+    $queueStmt = $db->prepare('SELECT IFNULL(MAX(queue_position),0) as pos FROM Reservations WHERE isbn = :isbn AND status = "Active"');
     $queueStmt->execute([':isbn' => $isbn]);
     $pos = (int)$queueStmt->fetch(PDO::FETCH_ASSOC)['pos'] + 1;
 
-    $stmt = $db->prepare('INSERT INTO reservations (
+    $stmt = $db->prepare('INSERT INTO Reservations (
         isbn, user_email, queue_position, status, created_at
     ) VALUES (
         :isbn, :user_email, :queue_position, "Active", NOW()

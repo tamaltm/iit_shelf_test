@@ -11,7 +11,8 @@ class UploadPdfPage extends StatefulWidget {
   State<UploadPdfPage> createState() => _UploadPdfPageState();
 }
 
-class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProviderStateMixin {
+class _UploadPdfPageState extends State<UploadPdfPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _selectedBookTitle;
   int? _selectedBookId;
@@ -24,8 +25,16 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
   bool _submitting = false;
 
   final requestedBooks = [
-    {'title': 'System Engineering', 'isbn': '123512ASED', 'author': 'Emily Davis'},
-    {'title': 'Advanced Algorithms', 'isbn': '234612AB', 'author': 'Michael Chen'},
+    {
+      'title': 'System Engineering',
+      'isbn': '123512ASED',
+      'author': 'Emily Davis',
+    },
+    {
+      'title': 'Advanced Algorithms',
+      'isbn': '234612AB',
+      'author': 'Michael Chen',
+    },
     {'title': 'Data Pipelines', 'isbn': '345713BC', 'author': 'Rahim Uddin'},
   ];
 
@@ -37,14 +46,18 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
     _tabController = TabController(length: 3, vsync: this);
     pendingUploads = [
       {
-        'bookTitle': requestedBooks.isNotEmpty ? requestedBooks.first['title']! : 'Requested Book',
+        'bookTitle': requestedBooks.isNotEmpty
+            ? requestedBooks.first['title']!
+            : 'Requested Book',
         'uploadType': 'Update',
         'status': 'Pending',
         'submittedDate': '2024-12-20',
         'notes': 'Updated edition with new chapters',
       },
       {
-        'bookTitle': requestedBooks.length > 1 ? requestedBooks[1]['title']! : 'Requested Book',
+        'bookTitle': requestedBooks.length > 1
+            ? requestedBooks[1]['title']!
+            : 'Requested Book',
         'uploadType': 'New Request',
         'status': 'Approved',
         'submittedDate': '2024-12-18',
@@ -71,7 +84,9 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
         if (_selectedBookTitle != null) {
           final match = books.firstWhere(
             (b) => b.title == _selectedBookTitle,
-            orElse: () => books.isNotEmpty ? books.first : Book(id: 0, title: '', author: ''),
+            orElse: () => books.isNotEmpty
+                ? books.first
+                : Book(id: 0, title: '', author: ''),
           );
           if (match.id != 0) {
             _selectedBookId = match.id;
@@ -96,7 +111,8 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
   Widget build(BuildContext context) {
     // Apply route arguments (if any) once to preselect tab/book when navigated from Book Details
     if (!_appliedRouteArgs) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null) {
         final mode = args['mode'] as String?;
         final bookTitle = args['bookTitle'] as String?;
@@ -114,7 +130,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
     }
     return Scaffold(
       backgroundColor: Colors.black,
-  appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
+      appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
       body: Column(
         children: [
           Padding(
@@ -133,10 +149,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                 const SizedBox(height: 8),
                 const Text(
                   "Upload or update PDFs for library books",
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
                 const SizedBox(height: 16),
                 TabBar(
@@ -165,7 +178,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
           ),
         ],
       ),
-  bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
+      bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
     );
   }
 
@@ -264,7 +277,10 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                       borderSide: const BorderSide(color: Colors.white24),
                     ),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.upload_file, color: Color(0xFF0A84FF)),
+                      icon: const Icon(
+                        Icons.upload_file,
+                        color: Color(0xFF0A84FF),
+                      ),
                       onPressed: () {
                         _showUploadDialog();
                       },
@@ -339,9 +355,13 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.blue.withAlpha(26), // Updated withOpacity to withAlpha
+              color: Colors.blue.withAlpha(
+                26,
+              ), // Updated withOpacity to withAlpha
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.blue.withAlpha(77)), // Updated withOpacity to withAlpha
+              border: Border.all(
+                color: Colors.blue.withAlpha(77),
+              ), // Updated withOpacity to withAlpha
             ),
             child: Row(
               children: [
@@ -350,10 +370,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                 Expanded(
                   child: Text(
                     "All PDF uploads require librarian approval before being added to the library.",
-                    style: TextStyle(
-                      color: Colors.blue.shade200,
-                      fontSize: 13,
-                    ),
+                    style: TextStyle(color: Colors.blue.shade200, fontSize: 13),
                   ),
                 ),
               ],
@@ -448,7 +465,10 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                       borderSide: const BorderSide(color: Colors.white24),
                     ),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.upload_file, color: Color(0xFF0A84FF)),
+                      icon: const Icon(
+                        Icons.upload_file,
+                        color: Color(0xFF0A84FF),
+                      ),
                       onPressed: () {
                         _showUploadDialog();
                       },
@@ -493,7 +513,8 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _selectedRequestedBook != null && _pdfUrl.isNotEmpty
+                    onPressed:
+                        _selectedRequestedBook != null && _pdfUrl.isNotEmpty
                         ? () {
                             _submitUpload('New Request');
                           }
@@ -523,9 +544,13 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.withAlpha(26), // Updated withOpacity to withAlpha
+              color: Colors.orange.withAlpha(
+                26,
+              ), // Updated withOpacity to withAlpha
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.withAlpha(77)), // Updated withOpacity to withAlpha
+              border: Border.all(
+                color: Colors.orange.withAlpha(77),
+              ), // Updated withOpacity to withAlpha
             ),
             child: Row(
               children: [
@@ -562,7 +587,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
   Widget _buildUploadCard(Map<String, dynamic> upload) {
     Color statusColor;
     IconData statusIcon;
-    
+
     switch (upload['status']) {
       case 'Pending':
         statusColor = Colors.orange;
@@ -606,9 +631,14 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
-                  color: statusColor.withAlpha(51), // Updated withOpacity to withAlpha
+                  color: statusColor.withAlpha(
+                    51,
+                  ), // Updated withOpacity to withAlpha
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -625,18 +655,12 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
           const SizedBox(height: 8),
           Text(
             "Type: ${upload['uploadType']}",
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
           ),
           const SizedBox(height: 4),
           Text(
             "Submitted: ${upload['submittedDate']}",
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 13,
-            ),
+            style: const TextStyle(color: Colors.white54, fontSize: 13),
           ),
           if (upload['notes'].isNotEmpty) ...[
             const SizedBox(height: 8),
@@ -648,10 +672,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
               ),
               child: Text(
                 upload['notes'],
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 13,
-                ),
+                style: const TextStyle(color: Colors.white70, fontSize: 13),
               ),
             ),
           ],
@@ -665,10 +686,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF2C2D35),
-        title: const Text(
-          "Upload PDF",
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text("Upload PDF", style: TextStyle(color: Colors.white)),
         content: const Text(
           "File upload functionality will be implemented here. For now, please paste the PDF URL in the text field.",
           style: TextStyle(color: Colors.white70),
@@ -703,7 +721,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> with SingleTickerProvider
     } else {
       result = await BookService.requestAddition(
         title: _selectedRequestedBook ?? 'Requested book',
-        reason: _pdfUrl,
+        pdfPath: _pdfUrl,
       );
     }
 

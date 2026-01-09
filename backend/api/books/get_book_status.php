@@ -1,5 +1,5 @@
 <?php
-include_once '../../config/database.php';
+include_once __DIR__ . '/../../config/database.php';
 
 $database = new Database();
 $db = $database->getConnection();
@@ -17,12 +17,8 @@ if (empty($isbn)) {
 }
 
 try {
-    // Get total and available copies from books table
-    $bookStmt = $db->prepare('
-        SELECT copies_total, copies_available 
-        FROM books 
-        WHERE isbn = :isbn AND is_deleted = 0
-    ');
+    // Get book from Books table
+    $bookStmt = $db->prepare('SELECT isbn FROM Books WHERE isbn = :isbn');
     $bookStmt->execute([':isbn' => $isbn]);
     $book = $bookStmt->fetch(PDO::FETCH_ASSOC);
 
@@ -35,30 +31,44 @@ try {
         exit;
     }
 
-    // Count borrowed copies (from approved_transactions)
-    $borrowStmt = $db->prepare('
-        SELECT COUNT(*) as borrowed_count
-        FROM approved_transactions at
-        JOIN book_copies bc ON at.copy_id = bc.copy_id
-        WHERE bc.isbn = :isbn 
-        AND at.status = "Borrowed"
+    // Count copies by status from Book_Copies
+    $copiesStmt = $db->prepare('
+        SELECT status, COUNT(*) as count
+        FROM Book_Copies
+        WHERE isbn = :isbn
+        GROUP BY status
     ');
-    $borrowStmt->execute([':isbn' => $isbn]);
-    $borrowData = $borrowStmt->fetch(PDO::FETCH_ASSOC);
+    $copiesStmt->execute([':isbn' => $isbn]);
+    $copiesData = $copiesStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // Count reserved copies
+    $copies = [
+        'available' => 0,
+        'borrowed' => 0,
+        'reserved' => 0,
+        'lost' => 0,
+        'discarded' => 0,
+    ];
+    
+    foreach ($copiesData as $row) {
+        $status = strtolower($row['status']);
+        if (isset($copies[$status])) {
+            $copies[$status] = (int)$row['count'];
+        }
+    }
+
+    // Count active reservations
     $reserveStmt = $db->prepare('
         SELECT COUNT(*) as reserved_count
-        FROM reservations
+        FROM Reservations
         WHERE isbn = :isbn 
-        AND status = "Active"
+          AND status = "Active"
     ');
     $reserveStmt->execute([':isbn' => $isbn]);
     $reserveData = $reserveStmt->fetch(PDO::FETCH_ASSOC);
 
-    $copiesTotal = (int)$book['copies_total'];
-    $copiesAvailable = (int)$book['copies_available'];
-    $borrowedCount = (int)$borrowData['borrowed_count'];
+    $copiesTotal = array_sum($copies);
+    $copiesAvailable = $copies['available'];
+    $borrowedCount = $copies['borrowed'];
     $reservedCount = (int)$reserveData['reserved_count'];
 
     // Determine availability

@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 require_once '../../config/database.php';
 require_once '../lib/auth_helpers.php';
 
@@ -17,7 +27,7 @@ if ($email === '' || $otp === '' || $newPassword === '') {
     ]);
 }
 
-$check = $db->prepare('SELECT email FROM users WHERE email = :email');
+$check = $db->prepare('SELECT email FROM Users WHERE email = :email');
 $check->execute([':email' => $email]);
 if (!$check->fetch(PDO::FETCH_ASSOC)) {
     respond(404, [
@@ -26,7 +36,7 @@ if (!$check->fetch(PDO::FETCH_ASSOC)) {
     ]);
 }
 
-$valid = validate_otp($db, $email, 'PasswordReset', $otp);
+$valid = validate_otp($email, 'PasswordReset', $otp);
 if (!$valid['ok']) {
     respond(400, [
         'success' => false,
@@ -35,10 +45,10 @@ if (!$valid['ok']) {
 }
 
 $hash = password_hash($newPassword, PASSWORD_BCRYPT);
-$db->prepare('UPDATE users SET password_hash = :ph, updated_at = NOW() WHERE email = :email')
+$db->prepare('UPDATE Users SET password_hash = :ph WHERE email = :email')
     ->execute([':ph' => $hash, ':email' => $email]);
 
-$db->prepare('DELETE FROM temp_user_verification WHERE email = :email AND purpose = :purpose')
+$db->prepare('DELETE FROM Temp_User_Verification WHERE email = :email AND purpose = :purpose')
     ->execute([':email' => $email, ':purpose' => 'PasswordReset']);
 
 respond(200, [

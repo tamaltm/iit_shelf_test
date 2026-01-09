@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'course_service.dart';
+
 class AddCoursePage extends StatefulWidget {
   const AddCoursePage({super.key});
 
@@ -13,6 +15,7 @@ class _AddCoursePageState extends State<AddCoursePage> {
   final _courseNameController = TextEditingController();
 
   String _selectedSemester = '11';
+  bool _isSubmitting = false;
 
   @override
   void dispose() {
@@ -21,21 +24,38 @@ class _AddCoursePageState extends State<AddCoursePage> {
     super.dispose();
   }
 
-  void _saveCourse() {
-    if (_formKey.currentState!.validate()) {
-      // TODO: Save course to backend
-      // Data to send: course_id (course code), course_name, semester
-      print('Course Code: ${_courseCodeController.text}');
-      print('Course Name: ${_courseNameController.text}');
-      print('Semester: $_selectedSemester');
+  Future<void> _saveCourse() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Course added successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.pop(context);
+    final code = _courseCodeController.text.trim();
+    final name = _courseNameController.text.trim();
+    final semester = _selectedSemester.trim();
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final resp = await CourseService.addCourse(
+      courseId: code,
+      courseName: name,
+      semester: semester,
+    );
+
+    if (!mounted) return;
+
+    setState(() {
+      _isSubmitting = false;
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(resp.message),
+        backgroundColor: resp.ok ? Colors.green : Colors.redAccent,
+      ),
+    );
+
+    if (resp.ok) {
+      Navigator.pop(context, true);
     }
   }
 
@@ -145,7 +165,7 @@ class _AddCoursePageState extends State<AddCoursePage> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _saveCourse,
+                  onPressed: _isSubmitting ? null : _saveCourse,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF0A84FF),
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -153,14 +173,23 @@ class _AddCoursePageState extends State<AddCoursePage> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    'Add Course',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text(
+                          'Add Course',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 16),

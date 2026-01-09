@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'book_detail.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
@@ -24,6 +25,7 @@ class _LibraryPageState extends State<LibraryPage> {
   bool _loading = true;
   String? _error;
   List<Book> _books = [];
+  Set<String> _borrowedBookIsbns = {}; // Track borrowed book ISBNs
 
   // simple demo lists for FilterPage
   final List<String> categories = [
@@ -46,6 +48,28 @@ class _LibraryPageState extends State<LibraryPage> {
   void initState() {
     super.initState();
     _loadBooks();
+    _loadBorrowedBooks();
+  }
+
+  Future<void> _loadBorrowedBooks() async {
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) return;
+
+    try {
+      final borrowedResponse = await BookService.getUserTransactions(
+        email,
+        status: 'borrowed',
+      );
+      if (mounted) {
+        setState(() {
+          _borrowedBookIsbns = Set.from(
+            borrowedResponse.map((book) => book['isbn'] as String? ?? ''),
+          );
+        });
+      }
+    } catch (e) {
+      // Silently fail - doesn't affect main functionality
+    }
   }
 
   @override
@@ -54,18 +78,34 @@ class _LibraryPageState extends State<LibraryPage> {
     super.dispose();
   }
 
-  Future<void> _loadBooks({String search = ''}) async {
+  Future<void> _loadBooks({
+    String search = '',
+    String? courseId,
+    String? category,
+    String? semester,
+    String? availability,
+    String? bookType,
+  }) async {
     setState(() {
       _loading = true;
       _error = null;
     });
 
     try {
-      final books = await BookService.fetchBooks(search: search);
+      final books = await BookService.fetchBooks(
+        search: search.isEmpty ? null : search,
+        courseId: courseId,
+        category: category,
+        semester: semester,
+        availability: availability,
+        bookType: bookType,
+      );
       setState(() {
         _books = books;
         _loading = false;
       });
+      // Refresh borrowed books list
+      await _loadBorrowedBooks();
     } catch (e) {
       setState(() {
         _loading = false;
@@ -114,18 +154,36 @@ class _LibraryPageState extends State<LibraryPage> {
                             borderSide: BorderSide.none,
                           ),
                           suffixIcon: IconButton(
-                            icon: const Icon(Icons.search, color: Colors.white70),
+                            icon: const Icon(
+                              Icons.search,
+                              color: Colors.white70,
+                            ),
                             onPressed: () => _loadBooks(
                               search: _searchController.text.trim(),
+                              courseId:
+                                  activeFilters?['course_code'] as String?,
+                              category: activeFilters?['category'] as String?,
+                              semester: activeFilters?['semester'] as String?,
+                              availability:
+                                  activeFilters?['availability'] as String?,
+                              bookType: activeFilters?['book_type'] as String?,
                             ),
                           ),
                         ),
-                        onSubmitted: (v) => _loadBooks(search: v.trim()),
+                        onSubmitted: (v) => _loadBooks(
+                          search: v.trim(),
+                          courseId: activeFilters?['course_code'] as String?,
+                          category: activeFilters?['category'] as String?,
+                          semester: activeFilters?['semester'] as String?,
+                          availability:
+                              activeFilters?['availability'] as String?,
+                          bookType: activeFilters?['book_type'] as String?,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       if (activeFilters != null)
                         Text(
-                          'Filters: ${activeFilters!['author'] ?? activeFilters!['category'] ?? ''}',
+                          'Filters: ${activeFilters!['course_code'] ?? activeFilters!['author'] ?? activeFilters!['category'] ?? ''}',
                           style: const TextStyle(color: Colors.white60),
                         ),
                     ],
@@ -148,6 +206,14 @@ class _LibraryPageState extends State<LibraryPage> {
                       setState(() {
                         activeFilters = result;
                       });
+                      _loadBooks(
+                        search: _searchController.text.trim(),
+                        courseId: result['course_code'] as String?,
+                        category: result['category'] as String?,
+                        semester: result['semester'] as String?,
+                        availability: result['availability'] as String?,
+                        bookType: result['book_type'] as String?,
+                      );
                     }
                   },
                   child: Container(
@@ -171,32 +237,37 @@ class _LibraryPageState extends State<LibraryPage> {
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
-                    ? Center(
-                        child: Text(
-                          _error!,
-                          style: const TextStyle(color: Colors.redAccent),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () => _loadBooks(
-                          search: _searchController.text.trim(),
-                        ),
-                        child: _getFilteredBooks().isEmpty
-                            ? const Center(
-                                child: Text(
-                                  'No books found',
-                                  style: TextStyle(color: Colors.white70),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                                itemCount: _getFilteredBooks().length,
-                                itemBuilder: (context, index) {
-                                  final book = _getFilteredBooks()[index];
-                                  return _buildBookCard(context, book, cardColor);
-                                },
-                              ),
-                      ),
+                ? Center(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.redAccent),
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: () => _loadBooks(
+                      search: _searchController.text.trim(),
+                      courseId: activeFilters?['course_code'] as String?,
+                      category: activeFilters?['category'] as String?,
+                      semester: activeFilters?['semester'] as String?,
+                      availability: activeFilters?['availability'] as String?,
+                      bookType: activeFilters?['book_type'] as String?,
+                    ),
+                    child: _getFilteredBooks().isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No books found',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                            itemCount: _getFilteredBooks().length,
+                            itemBuilder: (context, index) {
+                              final book = _getFilteredBooks()[index];
+                              return _buildBookCard(context, book, cardColor);
+                            },
+                          ),
+                  ),
           ),
         ],
       ),
@@ -212,7 +283,9 @@ class _LibraryPageState extends State<LibraryPage> {
     final author = activeFilters!['author'] as String?;
 
     return _books.where((b) {
-      if (author != null && author.isNotEmpty && author != 'All' &&
+      if (author != null &&
+          author.isNotEmpty &&
+          author != 'All' &&
           b.author != author) {
         return false;
       }
@@ -222,12 +295,45 @@ class _LibraryPageState extends State<LibraryPage> {
 
   // Filter chips removed — replaced by dedicated filter page
 
-  Widget _buildBookCard(
-    BuildContext context,
-    Book book,
-    Color cardColor,
-  ) {
+  Widget _buildBookCard(BuildContext context, Book book, Color cardColor) {
     final bool isAvailable = book.isAvailable;
+    final bool isAlreadyBorrowed = _borrowedBookIsbns.contains(book.isbn);
+    final bool hasPhysicalCopies = book.quantity > 0;
+    final bool hasPdf = (book.pdfUrl ?? '').isNotEmpty;
+    final statusColor = (!hasPhysicalCopies && hasPdf)
+        ? Colors.blue
+        : (isAlreadyBorrowed
+              ? Colors.grey
+              : (isAvailable ? Colors.green : Colors.orange));
+    final statusText = (!hasPhysicalCopies && hasPdf)
+        ? 'Digital Only'
+        : (isAlreadyBorrowed
+              ? 'Already Borrowed'
+              : (isAvailable ? 'Available' : 'Borrowed / Reserve'));
+
+    // Determine button state
+    late String buttonText;
+    late Color buttonColor;
+    late bool isButtonEnabled;
+
+    if (!hasPhysicalCopies && hasPdf) {
+      // Digital-only book - show Download PDF
+      buttonText = 'Download PDF';
+      buttonColor = Colors.blue;
+      isButtonEnabled = true;
+    } else if (isAlreadyBorrowed) {
+      buttonText = 'Borrowed';
+      buttonColor = Colors.grey;
+      isButtonEnabled = false;
+    } else if (isAvailable) {
+      buttonText = 'Borrow';
+      buttonColor = const Color(0xFF0A84FF);
+      isButtonEnabled = true;
+    } else {
+      buttonText = 'Reserve';
+      buttonColor = Colors.orange;
+      isButtonEnabled = true;
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -242,7 +348,8 @@ class _LibraryPageState extends State<LibraryPage> {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: BookImage(
-              book.coverImage ?? 'https://picsum.photos/seed/${book.id}/400/600',
+              book.coverImage ??
+                  'https://picsum.photos/seed/${book.id}/400/600',
               width: 90,
               height: 120,
               fit: BoxFit.cover,
@@ -283,14 +390,14 @@ class _LibraryPageState extends State<LibraryPage> {
                   children: [
                     Icon(
                       isAvailable ? Icons.check_circle : Icons.access_time,
-                      color: isAvailable ? Colors.green : Colors.orange,
+                      color: statusColor,
                       size: 15,
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      isAvailable ? 'Available' : 'Borrowed / Reserve',
+                      statusText,
                       style: TextStyle(
-                        color: isAvailable ? Colors.green : Colors.orange,
+                        color: statusColor,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -302,40 +409,70 @@ class _LibraryPageState extends State<LibraryPage> {
                   width: double.infinity,
                   height: 44,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BookDetailPage(
-                            bookId: book.id,
-                            image: book.coverImage ?? '',
-                            title: book.title,
-                            author: book.author,
-                            description: book.description ?? 'No description available',
-                            available: isAvailable,
-                            pdfAvailable: (book.pdfUrl ?? '').isNotEmpty,
-                            role: widget.userRole ?? 'Student',
-                            currentBorrowed: 0,
-                            isbn: book.isbn,
-                            pages: book.pages,
-                            year: book.publicationYear,
-                            publisher: book.publisher,
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: isButtonEnabled
+                        ? () async {
+                            // If it's a digital-only book, download PDF directly
+                            if (!hasPhysicalCopies && hasPdf) {
+                              final url = Uri.parse(book.pdfUrl!);
+                              final ok = await launchUrl(
+                                url,
+                                mode: LaunchMode.externalApplication,
+                              );
+                              if (!ok && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Could not open PDF'),
+                                  ),
+                                );
+                              }
+                            } else {
+                              // For physical books, navigate to detail page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => BookDetailPage(
+                                    bookId: book.id,
+                                    image: book.coverImage ?? '',
+                                    title: book.title,
+                                    author: book.author,
+                                    description:
+                                        book.description ??
+                                        'No description available',
+                                    available: isAvailable,
+                                    pdfAvailable:
+                                        (book.pdfUrl ?? '').isNotEmpty,
+                                    pdfUrl: book.pdfUrl,
+                                    role: widget.userRole ?? 'Student',
+                                    currentBorrowed: 0,
+                                    isbn: book.isbn,
+                                    pages: book.pages,
+                                    year: book.publicationYear,
+                                    publisher: book.publisher,
+                                    courseId: book.courseId,
+                                    totalCopies: book.quantity,
+                                  ),
+                                ),
+                              ).then(
+                                (_) => _loadBooks(
+                                  search: _searchController.text.trim(),
+                                  courseId:
+                                      activeFilters?['course_code'] as String?,
+                                ),
+                              );
+                            }
+                          }
+                        : null,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isAvailable
-                          ? const Color(0xFF0A84FF)
-                          : Colors.orange,
+                      backgroundColor: buttonColor,
                       foregroundColor: Colors.white,
                       elevation: 0,
+                      disabledBackgroundColor: Colors.grey,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
                     child: Text(
-                      isAvailable ? 'Borrow' : 'Reserve',
+                      buttonText,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 15,
@@ -358,9 +495,16 @@ class _LibraryPageState extends State<LibraryPage> {
                             title: book.title,
                             author: book.author,
                             description:
-                                'A comprehensive guide covering the fundamentals and advanced concepts.',
+                                book.description ?? 'No description available',
                             available: isAvailable,
                             pdfAvailable: (book.pdfUrl ?? '').isNotEmpty,
+                            pdfUrl: book.pdfUrl,
+                            isbn: book.isbn,
+                            pages: book.pages,
+                            year: book.publicationYear,
+                            publisher: book.publisher,
+                            courseId: book.courseId,
+                            totalCopies: book.quantity,
                           ),
                         ),
                       );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'shelf_service.dart';
 
 class RemoveShelfPage extends StatefulWidget {
   const RemoveShelfPage({super.key});
@@ -8,15 +9,34 @@ class RemoveShelfPage extends StatefulWidget {
 }
 
 class _RemoveShelfPageState extends State<RemoveShelfPage> {
-  final _shelfNoController = TextEditingController();
-  final _compartmentNoController = TextEditingController();
-  final _subCompartmentNoController = TextEditingController();
+  List<ShelfLocation> _shelves = [];
+  Set<int> _selectedIndices = {};
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadShelves();
+  }
+
+  Future<void> _loadShelves() async {
+    try {
+      final shelves = await ShelfService.getShelfLocations();
+      setState(() {
+        _shelves = shelves;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Failed to load shelves: $e';
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
-    _shelfNoController.dispose();
-    _compartmentNoController.dispose();
-    _subCompartmentNoController.dispose();
     super.dispose();
   }
 
@@ -50,94 +70,153 @@ class _RemoveShelfPageState extends State<RemoveShelfPage> {
           ),
         ],
       ),
-      body: Center(
-        child: Container(
-          margin: const EdgeInsets.all(24),
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: const Color(0xFF2C2D35),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                "Remove Shelf",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.green))
+          : _errorMessage != null
+          ? Center(
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 40),
-              
-              _buildTextField("Shelf No:", _shelfNoController),
-              const SizedBox(height: 20),
-              _buildTextField("Compartment No:", _compartmentNoController),
-              const SizedBox(height: 20),
-              _buildTextField("Sub-Compartment No:", _subCompartmentNoController),
-              
-              const SizedBox(height: 40),
-              
-              ElevatedButton(
-                onPressed: () {
-                  // Handle remove shelf logic
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Shelf removed successfully!")),
-                  );
-                  Navigator.pop(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text(
-                  "Remove",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+            )
+          : Container(
+              margin: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2C2D35),
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
-          ),
-        ),
-      ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    "Remove Shelf",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 40),
+                  if (_shelves.isEmpty)
+                    const Text(
+                      "No shelves available",
+                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      textAlign: TextAlign.center,
+                    )
+                  else
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1B1E),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: _shelves.length,
+                          itemBuilder: (context, index) {
+                            final shelf = _shelves[index];
+                            final isSelected = _selectedIndices.contains(index);
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: CheckboxListTile(
+                                value: isSelected,
+                                onChanged: (value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      _selectedIndices.add(index);
+                                    } else {
+                                      _selectedIndices.remove(index);
+                                    }
+                                  });
+                                },
+                                title: Text(
+                                  "Shelf ${shelf.shelfId} - Compartment ${shelf.compartmentNo} - SubCompartment ${shelf.subcompartmentNo}",
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                fillColor: MaterialStateProperty.all(
+                                  Colors.green,
+                                ),
+                                checkColor: Colors.white,
+                                tileColor: isSelected
+                                    ? Colors.green.withOpacity(0.2)
+                                    : null,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 40),
+                  ElevatedButton(
+                    onPressed: _selectedIndices.isEmpty
+                        ? null
+                        : () async {
+                            await _handleRemoveShelves();
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      disabledBackgroundColor: Colors.red.withOpacity(0.5),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      "Remove",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: controller,
-          style: const TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF1A1B1E),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide.none,
+  Future<void> _handleRemoveShelves() async {
+    try {
+      final selectedShelves = [
+        for (int index in _selectedIndices) _shelves[index],
+      ];
+
+      for (final shelf in selectedShelves) {
+        await ShelfService.removeShelfLocation(
+          shelf.shelfId,
+          shelf.compartmentNo,
+          shelf.subcompartmentNo,
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "${selectedShelves.length} shelf(ves) removed successfully!",
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           ),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error removing shelves: $e"),
+          backgroundColor: Colors.red,
         ),
-      ],
-    );
+      );
+    }
   }
 }

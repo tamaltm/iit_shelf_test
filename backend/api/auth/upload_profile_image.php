@@ -60,7 +60,7 @@ if (!in_array($mimeType, $allowedTypes)) {
 }
 
 // Check if user exists
-$stmt = $db->prepare('SELECT email FROM users WHERE email = :email');
+$stmt = $db->prepare('SELECT email FROM Users WHERE email = :email');
 $stmt->execute([':email' => $email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -97,7 +97,7 @@ if (!move_uploaded_file($file['tmp_name'], $filepath)) {
 // Save path to database (relative path for serving)
 $imagePath = 'uploads/profiles/' . $filename;
 
-$updateStmt = $db->prepare('UPDATE users SET profile_image = :image, updated_at = NOW() WHERE email = :email');
+$updateStmt = $db->prepare('UPDATE Users SET profile_image = :image WHERE email = :email');
 $updateStmt->execute([
     ':image' => $imagePath,
     ':email' => $email

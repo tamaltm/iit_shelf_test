@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
 import 'auth_service.dart';
-import 'book_resources.dart';
 import 'book_image.dart';
+import 'book_service.dart';
+import 'payment_service.dart';
 
 class Book {
   final String image;
@@ -12,6 +13,7 @@ class Book {
   final String dueLabel;
   final Color dueColor;
   final String id;
+  final int? transactionId;
 
   Book({
     required this.image,
@@ -20,6 +22,7 @@ class Book {
     required this.dueLabel,
     required this.dueColor,
     required this.id,
+    this.transactionId,
   });
 }
 
@@ -30,271 +33,379 @@ class ProfessorDashboardPage extends StatefulWidget {
 }
 
 class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
-  // build small sets from shared resources, rotated
-  final borrowedBooks = [
-    Book(
-      image: bookResources[0]['image']!,
-      title: bookResources[0]['title']!,
-      author: bookResources[0]['author']!,
-      dueLabel: 'Due: 2024-12-30',
-      dueColor: Colors.orange,
-      id: 'ID: 12345',
-    ),
-    Book(
-      image: bookResources[1]['image']!,
-      title: bookResources[1]['title']!,
-      author: bookResources[1]['author']!,
-      dueLabel: 'Due: 2024-12-25',
-      dueColor: Colors.red,
-      id: 'ID: 12346',
-    ),
-  ];
+  List<Map<String, dynamic>> _borrowedBooks = [];
+  List<Book> _recommendedBooks = [];
+  bool _isLoading = true;
+  int _borrowedCount = 0;
+  int _overdueCount = 0;
+  int _borrowingLimit = 5; // Default for teachers
+  double _outstandingFines = 0;
 
-  final recommendedBooks = List<Book>.generate(
-    bookResources.length,
-    (i) => Book(
-      image: bookResources[(i + 2) % bookResources.length]['image']!,
-      title: bookResources[(i + 2) % bookResources.length]['title']!,
-      author: bookResources[(i + 2) % bookResources.length]['author']!,
-      dueLabel: 'Available',
-      dueColor: Colors.green,
-      id: 'ID: ${20000 + i}',
-    ),
-  );
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  int _getBorrowingLimit(String? role) {
+    switch (role?.toLowerCase()) {
+      case 'student':
+        return 2;
+      case 'teacher':
+        return 5;
+      case 'librarian':
+        return 10;
+      case 'director':
+        return 10;
+      default:
+        return 5;
+    }
+  }
+
+  Future<void> _loadDashboardData() async {
+    final email = AuthService.getCurrentUserEmail();
+    final role = AuthService.getCurrentUserRole();
+
+    if (email == null) {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      // Set borrowing limit based on role
+      _borrowingLimit = _getBorrowingLimit(role);
+
+      // Fetch borrowed books
+      final borrowedResponse = await BookService.getUserTransactions(
+        email,
+        status: 'borrowed',
+      );
+
+      // Fetch all books for recommendations
+      final allBooksResponse = await BookService.fetchBooks();
+
+      // Fetch outstanding fines
+      final fine = await PaymentService.fetchOutstandingFines();
+
+      if (mounted) {
+        setState(() {
+          _borrowedBooks = borrowedResponse.take(2).toList(); // Show top 2
+          _borrowedCount = borrowedResponse.length;
+
+          // Calculate overdue count from API response
+          _overdueCount = borrowedResponse.where((book) {
+            return book['status'] == 'Overdue' || book['type'] == 'overdue';
+          }).length;
+
+          // Create recommended books from available books
+          _recommendedBooks = allBooksResponse
+              .map(
+                (book) => Book(
+                  image: book.coverImage ?? '',
+                  title: book.title,
+                  author: book.author,
+                  dueLabel: '${book.availableQuantity} available',
+                  dueColor: book.isAvailable ? Colors.green : Colors.grey,
+                  id: book.isbn ?? book.id.toString(),
+                ),
+              )
+              .toList();
+
+          _outstandingFines = fine?.totalOutstanding ?? 0;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  int _calculateDaysUntilDue(String? dueDate) {
+    if (dueDate == null) return 0;
+    try {
+      final due = DateTime.parse(dueDate);
+      final now = DateTime.now();
+      return due.difference(now).inDays;
+    } catch (e) {
+      return 0;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: CustomAppBar(userRole: AuthService.getCurrentUserRole()),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Dashboard header removed per request
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    "Books Borrowed",
-                    "2/2",
-                    Icons.menu_book,
-                    Colors.blue,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    "Overdue",
-                    "0",
-                    Icons.warning_amber_rounded,
-                    Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            Container(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.account_balance_wallet,
-                      color: Colors.red,
-                      size: 28,
-                    ),
+                  // Dashboard header removed per request
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          "Books Borrowed",
+                          "$_borrowedCount/$_borrowingLimit",
+                          Icons.menu_book,
+                          Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          "Overdue",
+                          _overdueCount.toString(),
+                          Icons.warning_amber_rounded,
+                          Colors.orange,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 12),
+
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).cardColor.withOpacity(0.8),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
                       children: [
-                        Text(
-                          "Outstanding Fines",
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).textTheme.bodyMedium?.color
-                                    ?.withOpacity(0.7) ??
-                                Colors.white70,
-                            fontSize: 14,
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.account_balance_wallet,
+                            color: Colors.red,
+                            size: 28,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'BDT 150.00',
-                          style: TextStyle(
-                            color:
-                                Theme.of(context).textTheme.bodyLarge?.color ??
-                                Colors.white,
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Outstanding Fines",
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium
+                                          ?.color
+                                          ?.withOpacity(0.7) ??
+                                      Colors.white70,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'BDT ${_outstandingFines.toStringAsFixed(2)}',
+                                style: TextStyle(
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).textTheme.bodyLarge?.color ??
+                                      Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.pushNamed(context, '/payment');
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0A84FF),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            "Pay Now",
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
                     ),
                   ),
-                  ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, '/payment');
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0A84FF),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
+
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Recommended for You",
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).textTheme.bodyLarge?.color ??
+                              Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/library');
+                        },
+                        child: const Text(
+                          "View All",
+                          style: TextStyle(color: Color(0xFF0A84FF)),
+                        ),
                       ),
-                    ),
-                    child: const Text(
-                      "Pay Now",
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height:
+                        250, // Increased height from 240 to 250 to fix overflow error
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _recommendedBooks.length,
+                      itemBuilder: (context, index) {
+                        return _buildCarouselBookCard(_recommendedBooks[index]);
+                      },
                     ),
                   ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        "Currently Borrowed",
+                        style: TextStyle(
+                          color:
+                              Theme.of(context).textTheme.bodyLarge?.color ??
+                              Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.pushNamed(context, '/borrowed');
+                        },
+                        child: const Text(
+                          "View All",
+                          style: TextStyle(color: Color(0xFF0A84FF)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  if (_borrowedBooks.isEmpty)
+                    const Center(
+                      child: Text(
+                        'No books currently borrowed',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    )
+                  else
+                    ..._borrowedBooks.map((book) {
+                      final daysUntilDue = _calculateDaysUntilDue(
+                        book['due_date'],
+                      );
+                      String dueLabel = '';
+                      Color dueColor = Colors.grey;
+
+                      if (daysUntilDue > 0) {
+                        dueLabel = "Due in $daysUntilDue days";
+                        dueColor = daysUntilDue <= 3
+                            ? Colors.red
+                            : Colors.orange;
+                      } else {
+                        dueLabel = "Overdue by ${daysUntilDue.abs()} days";
+                        dueColor = Colors.red;
+                      }
+
+                      return _buildBookCard(
+                        Book(
+                          image: book['pic_path'] ?? '',
+                          title: book['title'] ?? 'Unknown Title',
+                          author: book['author'] ?? 'Unknown Author',
+                          dueLabel: dueLabel,
+                          dueColor: dueColor,
+                          id: book['isbn'] ?? '',
+                          transactionId: book['id'] as int?,
+                        ),
+                      );
+                    }),
+
+                  const SizedBox(height: 16),
+
+                  Text(
+                    "Quick Actions",
+                    style: TextStyle(
+                      color:
+                          Theme.of(context).textTheme.bodyLarge?.color ??
+                          Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: 1.5,
+                    children: [
+                      _QuickButton(
+                        icon: Icons.bookmark_rounded,
+                        label: "Reservations",
+                        onTap: () {
+                          Navigator.pushNamed(context, '/reserved');
+                        },
+                      ),
+                      _QuickButton(
+                        icon: Icons.book,
+                        label: "Request New Book",
+                        onTap: () {
+                          Navigator.pushNamed(context, '/request-book-details');
+                        },
+                      ),
+                      _QuickButton(
+                        icon: Icons.call,
+                        label: "Contact Librarian",
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/contact-librarian',
+                          ); // Updated to navigate to contact librarian page
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
                 ],
               ),
             ),
-
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Recommended for You",
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).textTheme.bodyLarge?.color ??
-                        Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/library');
-                  },
-                  child: const Text(
-                    "View All",
-                    style: TextStyle(color: Color(0xFF0A84FF)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height:
-                  250, // Increased height from 240 to 250 to fix overflow error
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: recommendedBooks.length,
-                itemBuilder: (context, index) {
-                  return _buildCarouselBookCard(recommendedBooks[index]);
-                },
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Currently Borrowed",
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).textTheme.bodyLarge?.color ??
-                        Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/borrowed');
-                  },
-                  child: const Text(
-                    "View All",
-                    style: TextStyle(color: Color(0xFF0A84FF)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            ...borrowedBooks.map((book) => _buildBookCard(book)),
-
-            const SizedBox(height: 16),
-
-            Text(
-              "Quick Actions",
-              style: TextStyle(
-                color:
-                    Theme.of(context).textTheme.bodyLarge?.color ??
-                    Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.5,
-              children: [
-                _QuickButton(
-                  icon: Icons.bookmark_rounded,
-                  label: "Reservations",
-                  onTap: () {
-                    Navigator.pushNamed(context, '/reserved');
-                  },
-                ),
-                _QuickButton(
-                  icon: Icons.upload_file_outlined,
-                  label: "Upload PDF",
-                  onTap: () {
-                    Navigator.pushNamed(context, '/upload-pdf');
-                  },
-                ),
-                _QuickButton(
-                  icon: Icons.book,
-                  label: "Request New Book",
-                  onTap: () {
-                    Navigator.pushNamed(context, '/request-book-details');
-                  },
-                ),
-                _QuickButton(
-                  icon: Icons.call,
-                  label: "Contact Librarian",
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/contact-librarian',
-                    ); // Updated to navigate to contact librarian page
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
       bottomNavigationBar: const RoleBottomNav(currentIndex: 0),
     );
   }
@@ -314,6 +425,7 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
               'image': book.image,
               'description': 'Explore more about ${book.title}.',
               'available': book.dueColor == Colors.green,
+              'isbn': book.id,
             },
           );
         },
@@ -412,145 +524,91 @@ class _ProfessorDashboardPageState extends State<ProfessorDashboardPage> {
   }
 
   Widget _buildBookCard(Book book) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: BookImage(
-              book.image,
-              width: 60,
-              height: 90,
-              fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/book-detail',
+          arguments: {
+            'title': book.title,
+            'author': book.author,
+            'image': book.image,
+            'isbn': book.id,
+          },
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor.withOpacity(0.8),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: BookImage(
+                book.image,
+                width: 60,
+                height: 90,
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  book.title,
-                  style: TextStyle(
-                    color:
-                        Theme.of(context).textTheme.bodyLarge?.color ??
-                        Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  book.author,
-                  style: TextStyle(
-                    color:
-                        Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
-                        Colors.white60,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: book.dueColor.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    book.dueLabel,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.title,
                     style: TextStyle(
-                      color: book.dueColor,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      color:
+                          Theme.of(context).textTheme.bodyLarge?.color ??
+                          Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    book.author,
+                    style: TextStyle(
+                      color:
+                          Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                          Colors.white60,
+                      fontSize: 13,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/return-details',
-                            arguments: {
-                              'title': book.title,
-                              'author': book.author,
-                              'image': book.image,
-                              'bookId': book.id,
-                              'dueDate': book.dueLabel,
-                            },
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0A84FF),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          "Return",
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: book.dueColor.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      book.dueLabel,
+                      style: TextStyle(
+                        color: book.dueColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/book-detail',
-                            arguments: {
-                              'title': book.title,
-                              'author': book.author,
-                              'image': book.image,
-                            },
-                          );
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white,
-                          side: const BorderSide(color: Colors.white24),
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          "Details",
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

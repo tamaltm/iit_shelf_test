@@ -2,11 +2,57 @@ import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
-import 'book_resources.dart';
 import 'book_image.dart';
+import 'book_service.dart';
 
-class ReturnedBooksPage extends StatelessWidget {
+class ReturnedBooksPage extends StatefulWidget {
   const ReturnedBooksPage({super.key});
+
+  @override
+  State<ReturnedBooksPage> createState() => _ReturnedBooksPageState();
+}
+
+class _ReturnedBooksPageState extends State<ReturnedBooksPage> {
+  List<Map<String, dynamic>> _returnedBooks = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReturnedBooks();
+  }
+
+  Future<void> _loadReturnedBooks() async {
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) {
+      setState(() {
+        _error = 'User not logged in';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await BookService.getUserTransactions(
+        email,
+        status: 'returned',
+      );
+      if (mounted) {
+        setState(() {
+          _returnedBooks = response;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load returned books';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,25 +120,37 @@ class ReturnedBooksPage extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              children: [
-                ReturnedBookCard(
-                  image: bookResources[0]['image']!,
-                  title: bookResources[0]['title']!,
-                  author: bookResources[0]['author']!,
-                  id: "823(A)",
-                  returned: "Returned 3 days ago",
-                ),
-                ReturnedBookCard(
-                  image: bookResources[1]['image']!,
-                  title: bookResources[1]['title']!,
-                  author: bookResources[1]['author']!,
-                  id: "813(A)",
-                  returned: "Returned 10 days ago",
-                ),
-              ],
-            ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  )
+                : _returnedBooks.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No returned books',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _returnedBooks.length,
+                    itemBuilder: (context, index) {
+                      final book = _returnedBooks[index];
+                      return ReturnedBookCard(
+                        image: book['pic_path'] ?? '',
+                        title: book['title'] ?? 'Unknown Title',
+                        author: book['author'] ?? 'Unknown Author',
+                        id: book['copy_id'] ?? '',
+                        returned: book['return_date'] ?? '',
+                        isbn: book['isbn'],
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -132,6 +190,7 @@ class _TabButton extends StatelessWidget {
 
 class ReturnedBookCard extends StatelessWidget {
   final String image, title, author, id, returned;
+  final String? isbn;
 
   const ReturnedBookCard({
     super.key,
@@ -140,6 +199,7 @@ class ReturnedBookCard extends StatelessWidget {
     required this.author,
     required this.id,
     required this.returned,
+    this.isbn,
   });
 
   @override
@@ -161,8 +221,8 @@ class ReturnedBookCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: BookImage(
                     image,
-                    width: 54,
-                    height: 60,
+                    width: 90,
+                    height: 120,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -241,6 +301,7 @@ class ReturnedBookCard extends StatelessWidget {
                           'image': image,
                           'description': 'Book details for $title',
                           'available': true,
+                          if (isbn != null && isbn!.isNotEmpty) 'isbn': isbn,
                         },
                       );
                     },

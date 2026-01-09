@@ -32,22 +32,35 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   String _getRoleDisplayName() {
-    final role = (userRole ?? AuthService.getCurrentUserRole());
-    return role?.toUpperCase() ?? 'USER';
+    final role = (userRole ?? AuthService.getCurrentUserRole())?.toLowerCase();
+    // Show teacher's designation instead of generic role badge when available
+    if (role == 'teacher') {
+      final designation = AuthService.getCurrentUserProfile()['designation'];
+      if (designation != null && designation.toString().trim().isNotEmpty) {
+        return designation.toString();
+      }
+    }
+    return (role ?? 'user').toUpperCase();
   }
 
   String _getDisplayName() {
     if (userName != null && userName!.trim().isNotEmpty) return userName!;
+    // Try to get name from current user profile
+    final profileName = AuthService.getCurrentUserProfile()['name'];
+    if (profileName != null && profileName.toString().trim().isNotEmpty) {
+      return profileName.toString();
+    }
+    // Fallback to hardcoded names by role
     final role = (userRole ?? AuthService.getCurrentUserRole())?.toLowerCase();
     switch (role) {
       case 'student':
-        return 'Tamal Mazumder';
+        return 'Student';
       case 'teacher':
-        return 'Md. Eusha Kadir';
+        return 'Teacher';
       case 'librarian':
-        return 'Jamal Uddin';
+        return 'Librarian';
       case 'director':
-        return 'Nizam Uddin';
+        return 'Director';
       default:
         return 'User';
     }
@@ -58,6 +71,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   // compute display name once before building widgets
   final displayName = _getDisplayName();
   final themeService = ThemeService();
+  final profileImage = AuthService.getCurrentUserProfile()['profile_image'];
 
   return AppBar(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -76,12 +90,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
             child: ClipOval(
-              child: BookImage(
-                AuthService.getCurrentUserProfile()['profile_image'] ?? profileImageUrl,
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-              ),
+              child: (profileImage != null && profileImage.toString().isNotEmpty)
+                  ? BookImage(
+                      profileImage,
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                    )
+                  : Container(
+                      color: themeService.cardBackgroundColor,
+                      child: const Icon(Icons.person, color: Colors.white70),
+                    ),
             ),
           ),
           const SizedBox(width: 12),

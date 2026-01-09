@@ -19,7 +19,7 @@ if ($email === '' || $newPassword === '') {
     ]);
 }
 
-$stmt = $db->prepare('SELECT email, email_verified_at FROM users WHERE email = :email');
+$stmt = $db->prepare('SELECT email FROM Users WHERE email = :email');
 $stmt->execute([':email' => $email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -30,20 +30,17 @@ if (!$user) {
     ]);
 }
 
-if (empty($user['email_verified_at'])) {
-    respond(400, [
-        'success' => false,
-        'message' => 'Please verify your email before setting a password.',
-    ]);
-}
-
 $hash = password_hash($newPassword, PASSWORD_BCRYPT);
-$upd = $db->prepare('UPDATE users SET password_hash = :ph, name = :name, phone = :phone, role = :role, updated_at = NOW() WHERE email = :email');
+
+// Get current user name from database (set from pre-registration)
+$stmt = $db->prepare('SELECT name, contact, role FROM Users WHERE email = :email');
+$stmt->execute([':email' => $email]);
+$userData = $stmt->fetch(PDO::FETCH_ASSOC);
+
+// Only update password - preserve pre-registered name, contact, and role
+$upd = $db->prepare('UPDATE Users SET password_hash = :ph WHERE email = :email');
 $upd->execute([
     ':ph' => $hash,
-    ':name' => $name ?: $email, // Use email as name if not provided
-    ':phone' => $phone,
-    ':role' => $role,
     ':email' => $email,
 ]);
 

@@ -5,6 +5,7 @@ import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
 import 'theme_service.dart';
+import 'book_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -18,13 +19,18 @@ class _ProfilePageState extends State<ProfilePage> {
   final ImagePicker _imagePicker = ImagePicker();
   
   bool _isLoading = false;
+  bool _statsLoading = false;
   String? _profileImagePath;
   Map<String, dynamic> _profileData = {};
+  int _borrowedCount = 0;
+  int _returnedCount = 0;
+  int _reservedCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadStats();
   }
 
   Future<void> _loadProfile() async {
@@ -34,6 +40,39 @@ class _ProfilePageState extends State<ProfilePage> {
       if (result.ok) {
         setState(() {
           _profileData = AuthService.getCurrentUserProfile();
+        });
+      }
+    }
+  }
+
+  Future<void> _loadStats() async {
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) return;
+
+    setState(() {
+      _statsLoading = true;
+    });
+
+    try {
+      final results = await Future.wait([
+        BookService.getUserTransactions(email, status: 'borrowed'),
+        BookService.getUserTransactions(email, status: 'returned'),
+        BookService.getUserTransactions(email, status: 'reserved'),
+      ]);
+
+      if (!mounted) return;
+
+      setState(() {
+        _borrowedCount = results[0].length;
+        _returnedCount = results[1].length;
+        _reservedCount = results[2].length;
+      });
+    } catch (_) {
+      // Ignore and keep defaults if stats fail to load.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _statsLoading = false;
         });
       }
     }
@@ -199,10 +238,19 @@ class _ProfilePageState extends State<ProfilePage> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: const [
-                    _StatColumn(label: "Borrowed", value: "1"),
-                    _StatColumn(label: "Returned", value: "23"),
-                    _StatColumn(label: "Reserved", value: "1"),
+                  children: [
+                    _StatColumn(
+                      label: "Borrowed",
+                      value: _statsLoading ? "..." : _borrowedCount.toString(),
+                    ),
+                    _StatColumn(
+                      label: "Returned",
+                      value: _statsLoading ? "..." : _returnedCount.toString(),
+                    ),
+                    _StatColumn(
+                      label: "Reserved",
+                      value: _statsLoading ? "..." : _reservedCount.toString(),
+                    ),
                   ],
                 ),
               ),
@@ -234,24 +282,6 @@ class _ProfilePageState extends State<ProfilePage> {
               onTap: () {
                 Navigator.pushNamed(context, '/edit-profile');
               },
-              cardColor: cardColor,
-            ),
-            ProfileMenuItem(
-              icon: Icons.settings,
-              title: "Settings",
-              onTap: () {},
-              cardColor: cardColor,
-            ),
-            ProfileMenuItem(
-              icon: Icons.help,
-              title: "Help & Support",
-              onTap: () {},
-              cardColor: cardColor,
-            ),
-            ProfileMenuItem(
-              icon: Icons.info,
-              title: "About",
-              onTap: () {},
               cardColor: cardColor,
             ),
             const SizedBox(height: 20),

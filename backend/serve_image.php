@@ -36,6 +36,7 @@ $mimeTypes = [
     'png' => 'image/png',
     'gif' => 'image/gif',
     'webp' => 'image/webp',
+    'pdf' => 'application/pdf',
 ];
 
 $mimeType = $mimeTypes[$ext] ?? 'application/octet-stream';

@@ -16,7 +16,7 @@ if ($email === '' || $password === '') {
     ]);
 }
 
-$stmt = $db->prepare('SELECT email, password_hash, role, email_verified_at FROM users WHERE email = :email');
+$stmt = $db->prepare('SELECT email, password_hash, role FROM Users WHERE email = :email');
 $stmt->execute([':email' => $email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -27,13 +27,6 @@ if (!$user) {
     ]);
 }
 
-if (empty($user['email_verified_at'])) {
-    respond(403, [
-        'success' => false,
-        'message' => 'Please verify your email before signing in.',
-    ]);
-}
-
 if (!password_verify($password, $user['password_hash'])) {
     respond(401, [
         'success' => false,
@@ -41,7 +34,7 @@ if (!password_verify($password, $user['password_hash'])) {
     ]);
 }
 
-$db->prepare('UPDATE users SET last_login = NOW() WHERE email = :email')->execute([':email' => $email]);
+$db->prepare('UPDATE Users SET last_login = NOW() WHERE email = :email')->execute([':email' => $email]);
 
 // TODO: issue JWT/session token; returning stub for now
 respond(200, [

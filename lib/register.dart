@@ -21,6 +21,9 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _confirmController = TextEditingController();
   final TextEditingController _otpController = TextEditingController();
 
+  String? _preRegName;
+  String? _preRegPhone;
+
   bool _otpSent = false;
   bool _otpVerified = false;
   bool _isSending = false;
@@ -108,14 +111,16 @@ class _RegisterPageState extends State<RegisterPage> {
     await Future.delayed(const Duration(milliseconds: 200));
     final res = await AuthService.sendRegisterOtp(
       _emailController.text.trim(),
-      phone: _phoneController.text.trim(),
-      role: 'Student',
     );
     setState(() {
       _isSending = false;
       _otpSent = res.ok;
       _message = res.message;
       if (res.ok) {
+        // Store pre-reg data but DON'T fill controllers yet
+        // Controllers will be filled AFTER OTP verification
+        _preRegName = res.name;
+        _preRegPhone = res.phone;
         _startResendTimer();
       }
     });
@@ -137,6 +142,15 @@ class _RegisterPageState extends State<RegisterPage> {
       _isVerifying = false;
       _otpVerified = res.ok;
       _message = res.message;
+      // Fill credentials ONLY AFTER OTP verification succeeds
+      if (_otpVerified) {
+        if (_preRegName != null && _preRegName!.isNotEmpty) {
+          _nameController.text = _preRegName!;
+        }
+        if (_preRegPhone != null && _preRegPhone!.isNotEmpty) {
+          _phoneController.text = _preRegPhone!;
+        }
+      }
     });
   }
 
@@ -154,8 +168,6 @@ class _RegisterPageState extends State<RegisterPage> {
     final res = await AuthService.setPasswordAfterVerification(
       _emailController.text.trim(),
       _passwordController.text,
-      name: _nameController.text.trim(),
-      phone: _phoneController.text.trim(),
     );
     setState(() {
       _isSettingPassword = false;
@@ -262,10 +274,11 @@ class _RegisterPageState extends State<RegisterPage> {
                 TextFormField(
                   controller: _nameController,
                   style: TextStyle(color: Colors.white),
+                  readOnly: true,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.black,
-                    hintText: 'Enter your full name',
+                    hintText: 'Auto-filled after OTP verification',
                     hintStyle: TextStyle(color: Colors.grey[500]),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),
@@ -287,6 +300,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   controller: _phoneController,
                   style: TextStyle(color: Colors.white),
                   keyboardType: TextInputType.phone,
+                  readOnly: true,
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.black,
@@ -305,7 +319,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       minWidth: 60,
                       minHeight: 0,
                     ),
-                    hintText: 'Your phone number',
+                    hintText: 'Auto-filled after OTP verification',
                     hintStyle: TextStyle(color: Colors.grey[500]),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(6),

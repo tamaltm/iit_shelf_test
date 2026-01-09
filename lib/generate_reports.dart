@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
+import 'report_service.dart';
 
 class GenerateReportsPage extends StatefulWidget {
   final String? userRole; // 'librarian' or 'director'
@@ -15,47 +16,121 @@ class GenerateReportsPage extends StatefulWidget {
 class _GenerateReportsPageState extends State<GenerateReportsPage> {
   String startDate = "2023-01-01";
   String endDate = "2023-06-30";
-  String selectedSemester = "All Semester";
-  String selectedSession = "All Sessions";
-  final List<Map<String, String>> activityItems = [
-    {
-      'type': 'Borrow',
-      'book': 'Introduction to Quantum Computing',
-      'user': 'John Doe',
-      'id': '12345',
-      'date': '2024-01-15',
-      'time': '10:30 AM',
-      'status': 'Completed',
-    },
-    {
-      'type': 'Return',
-      'book': 'Database Management Systems',
-      'user': 'Sarah Johnson',
-      'id': '12346',
-      'date': '2024-01-14',
-      'time': '02:15 PM',
-      'status': 'Completed',
-    },
-    {
-      'type': 'Fine Payment',
-      'book': 'Introduction to Data Science',
-      'user': 'Alex Smith',
-      'id': '23457',
-      'date': '2024-01-14',
-      'time': '11:45 AM',
-      'status': 'Paid',
-      'amount': 'BDT 50.00',
-    },
-    {
-      'type': 'Reservation',
-      'book': 'Artificial Intelligence',
-      'user': 'Emily Davis',
-      'id': '12348',
-      'date': '2024-01-13',
-      'time': '09:20 AM',
-      'status': 'Active',
-    },
-  ];
+  String selectedReportType = "";
+  bool _isGenerating = false;
+  List<RecentReport> _recentReports = [];
+  dynamic _generatedData;
+  
+  final Map<String, String> reportTypes = {
+    'most_borrowed': 'Most Borrowed Books',
+    'most_requested': 'Most Requested Books',
+    'semester_wise': 'Semester Wise Borrowing',
+    'session_wise': 'Session Wise Borrowing',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure dropdown value matches the available options
+    selectedReportType = reportTypes.keys.first;
+    _loadRecentReports();
+    // Set default date range to last 30 days
+    final now = DateTime.now();
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    startDate = _formatDate(thirtyDaysAgo);
+    endDate = _formatDate(now);
+  }
+
+  Future<void> _loadRecentReports() async {
+    final reports = await ReportService.getRecentReports();
+    setState(() {
+      _recentReports = reports;
+    });
+  }
+
+  Future<void> _generateReport() async {
+    setState(() {
+      _isGenerating = true;
+      _generatedData = null;
+    });
+
+    final result = await ReportService.generateReport(
+      reportType: selectedReportType,
+      startDate: startDate,
+      endDate: endDate,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isGenerating = false;
+      });
+
+      if (result.success) {
+        setState(() {
+          _generatedData = result.data;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Report generated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${result.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _exportReport(String format) async {
+    if (_generatedData == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please generate a report first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isGenerating = true;
+    });
+
+    final result = await ReportService.downloadReport(
+      reportType: selectedReportType,
+      startDate: startDate,
+      endDate: endDate,
+      format: format,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isGenerating = false;
+      });
+
+      if (result.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Report saved to:\n${result.filePath}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: ${result.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,24 +201,22 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
                   
                   const SizedBox(height: 16),
                   
-                  // Semester Dropdown
-                  _buildDropdown(
-                    selectedSemester,
-                    ["All Semester", "Spring 2023", "Fall 2023", "Spring 2024"],
-                    (value) {
-                      setState(() => selectedSemester = value!);
-                    },
+                  // Report Type Dropdown
+                  const Text(
+                    "Report Type",
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                    ),
                   ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Session Dropdown
+                  const SizedBox(height: 8),
                   _buildDropdown(
-                    selectedSession,
-                    ["All Sessions", "Morning", "Afternoon", "Evening"],
+                    selectedReportType,
+                    reportTypes.keys.toList(),
                     (value) {
-                      setState(() => selectedSession = value!);
+                      setState(() => selectedReportType = value!);
                     },
+                    displayMapper: (value) => reportTypes[value] ?? value,
                   ),
                 ],
               ),
@@ -155,16 +228,20 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  // Generate report logic
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Generating report...")),
-                  );
-                },
-                icon: const Icon(Icons.assessment, color: Colors.white),
-                label: const Text(
-                  "Generate Report",
-                  style: TextStyle(
+                onPressed: _isGenerating ? null : _generateReport,
+                icon: _isGenerating
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.assessment, color: Colors.white),
+                label: Text(
+                  _isGenerating ? "Generating..." : "Generate Report",
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -172,6 +249,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
                 ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0A84FF),
+                  disabledBackgroundColor: Colors.grey,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -187,7 +265,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _isGenerating ? null : () => _exportReport('pdf'),
                     icon: const Icon(Icons.picture_as_pdf, color: Colors.white70),
                     label: const Text(
                       "Export PDF",
@@ -205,7 +283,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _isGenerating ? null : () => _exportReport('csv'),
                     icon: const Icon(Icons.table_chart, color: Colors.white70),
                     label: const Text(
                       "Export CSV",
@@ -225,6 +303,46 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
             
             const SizedBox(height: 24),
             
+            // Display generated data if available
+            if (_generatedData != null) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2D35),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Report Results",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                          onPressed: () {
+                            setState(() {
+                              _generatedData = null;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildReportDataView(_generatedData),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            
             // Recent Reports Section
             const Text(
               "Recent Reports",
@@ -236,17 +354,31 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
             ),
             const SizedBox(height: 12),
             
-            _buildRecentReportItem(
-              "Most Borrowed Books - October-2024",
-              () {},
-            ),
-            
-            const Divider(color: Colors.white24, height: 1),
-            
-            _buildRecentReportItem(
-              "Fines Collected - September",
-              () {},
-            ),
+            if (_recentReports.isEmpty)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'No recent reports',
+                    style: TextStyle(color: Colors.white54),
+                  ),
+                ),
+              )
+            else
+              ..._recentReports.take(3).map((report) => Column(
+                    children: [
+                      _buildRecentReportItem(
+                        report.title,
+                        () async {
+                          setState(() {
+                            selectedReportType = report.reportType;
+                          });
+                          await _generateReport();
+                        },
+                      ),
+                      const Divider(color: Colors.white24, height: 1),
+                    ],
+                  )),
             
             const SizedBox(height: 12),
             
@@ -265,41 +397,116 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
             ),
             
             const SizedBox(height: 20),
-
-            // Activity timeline
-            const Text(
-              "Recent Activity",
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...activityItems.map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _buildActivityCard(item),
-                )),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {},
-                child: const Text(
-                  "see all",
-                  style: TextStyle(
-                    color: Color(0xFF0A84FF),
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
           ],
         ),
       ),
   bottomNavigationBar: RoleBottomNav(currentIndex: 2, role: widget.userRole),
     );
+  }
+
+  Widget _buildReportDataView(dynamic data) {
+    if (data == null) {
+      return const Text(
+        'No data available',
+        style: TextStyle(color: Colors.white54),
+      );
+    }
+
+    // Handle different report types
+    if (data is Map) {
+      // Summary or fines report
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: data.entries.map((entry) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _formatKey(entry.key),
+                  style: const TextStyle(color: Colors.white70),
+                ),
+                Text(
+                  '${entry.value}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    } else if (data is List) {
+      // List of items
+      if (data.isEmpty) {
+        return const Text(
+          'No records found for the selected period',
+          style: TextStyle(color: Colors.white54),
+        );
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Total Records: ${data.length}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...data.take(5).map((item) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1B1E),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: (item as Map<String, dynamic>).entries.take(4).map((e) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      '${_formatKey(e.key)}: ${e.value}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  );
+                }).toList(),
+              ),
+            );
+          }),
+          if (data.length > 5)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                '... and ${data.length - 5} more records',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ),
+        ],
+      );
+    }
+
+    return Text(
+      data.toString(),
+      style: const TextStyle(color: Colors.white70),
+    );
+  }
+
+  String _formatKey(String key) {
+    return key
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
   }
 
   Widget _buildDatePicker(String date, VoidCallback onTap) {
@@ -368,7 +575,12 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
     return "$y-$m-$d";
   }
 
-  Widget _buildDropdown(String value, List<String> items, Function(String?) onChanged) {
+  Widget _buildDropdown(
+    String value,
+    List<String> items,
+    Function(String?) onChanged, {
+    String Function(String)? displayMapper,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -386,7 +598,7 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
           items: items.map((String item) {
             return DropdownMenuItem<String>(
               value: item,
-              child: Text(item),
+              child: Text(displayMapper != null ? displayMapper(item) : item),
             );
           }).toList(),
           onChanged: onChanged,
@@ -425,122 +637,4 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
       ),
     );
   }
-
-  Widget _buildActivityCard(Map<String, String> item) {
-    final status = item['status'] ?? '';
-    final statusColor = _statusColor(status);
-    final iconData = _activityIcon(item['type']);
-
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF1F2027),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(iconData, color: statusColor, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['book'] ?? '',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      Text(
-                        item['type'] ?? '',
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Text(
-                  status,
-                  style: TextStyle(color: statusColor, fontWeight: FontWeight.w600, fontSize: 12),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 24,
-            runSpacing: 8,
-            children: [
-              _infoRow(Icons.person_outline, 'User', item['user']),
-              _infoRow(Icons.badge_outlined, 'ID', item['id']),
-              _infoRow(Icons.calendar_today, 'Date', item['date']),
-              _infoRow(Icons.access_time, 'Time', item['time']),
-              if (item['amount'] != null) _infoRow(Icons.attach_money, 'Amount', item['amount']),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String label, String? value) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 16, color: Colors.white54),
-        const SizedBox(width: 6),
-        Text(
-          "$label: ${value ?? '-'}",
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
-        ),
-      ],
-    );
-  }
-
-  Color _statusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return const Color(0xFF46C08A);
-      case 'paid':
-        return const Color(0xFF46C08A);
-      case 'active':
-        return const Color(0xFF2F8BFF);
-      default:
-        return const Color(0xFFAAAAAA);
-    }
-  }
-
-  IconData _activityIcon(String? type) {
-    switch (type?.toLowerCase()) {
-      case 'borrow':
-        return Icons.book_outlined;
-      case 'return':
-        return Icons.assignment_turned_in_outlined;
-      case 'fine payment':
-        return Icons.receipt_long_outlined;
-      case 'reservation':
-        return Icons.event_available_outlined;
-      default:
-        return Icons.info_outline;
-    }
-  }
-  
 }

@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 require_once '../../config/database.php';
 require_once '../lib/auth_helpers.php';
 require_once '../lib/mail_service.php';
@@ -16,7 +26,7 @@ if ($email === '') {
     ]);
 }
 
-$stmt = $db->prepare('SELECT email, email_verified_at FROM users WHERE email = :email');
+$stmt = $db->prepare('SELECT email FROM Users WHERE email = :email');
 $stmt->execute([':email' => $email]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -28,14 +38,7 @@ if (!$user) {
     ]);
 }
 
-if (empty($user['email_verified_at'])) {
-    respond(403, [
-        'success' => false,
-        'message' => 'Email is not verified. Please verify first.',
-    ]);
-}
-
-$otpResult = issue_otp($db, $email, 'PasswordReset');
+$otpResult = issue_otp($email, 'PasswordReset');
 if (!$otpResult['ok']) {
     $wait = $otpResult['wait'] ?? 60;
     respond(429, [

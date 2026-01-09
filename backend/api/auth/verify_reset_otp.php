@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 require_once '../../config/database.php';
 require_once '../lib/auth_helpers.php';
 require_once '../lib/otp_attempt_tracker.php';
@@ -28,7 +38,7 @@ if ($lockout['locked']) {
     ]);
 }
 
-$valid = validate_otp($db, $email, 'PasswordReset', $otp);
+$valid = validate_otp($email, 'PasswordReset', $otp);
 if (!$valid['ok']) {
     $remaining = OtpAttemptTracker::getRemainingAttempts($email, 'PasswordReset');
     OtpAttemptTracker::logAttempt($email, 'PasswordReset', false, $valid['message'] ?? 'Invalid OTP');

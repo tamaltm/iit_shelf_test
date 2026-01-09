@@ -3,9 +3,56 @@ import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
 import 'auth_service.dart';
 import 'book_image.dart';
+import 'book_service.dart';
 
-class ReservedBooksPage extends StatelessWidget {
+class ReservedBooksPage extends StatefulWidget {
   const ReservedBooksPage({super.key});
+
+  @override
+  State<ReservedBooksPage> createState() => _ReservedBooksPageState();
+}
+
+class _ReservedBooksPageState extends State<ReservedBooksPage> {
+  List<Map<String, dynamic>> _reservedBooks = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReservedBooks();
+  }
+
+  Future<void> _loadReservedBooks() async {
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) {
+      setState(() {
+        _error = 'User not logged in';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await BookService.getUserTransactions(
+        email,
+        status: 'reserved',
+      );
+      if (mounted) {
+        setState(() {
+          _reservedBooks = response;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load reserved books';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +119,40 @@ class ReservedBooksPage extends StatelessWidget {
               ),
             ),
           ),
-          const Expanded(child: ReservedBookList()),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? Center(
+                    child: Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  )
+                : _reservedBooks.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No reserved books',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    itemCount: _reservedBooks.length,
+                    itemBuilder: (context, index) {
+                      final book = _reservedBooks[index];
+                      return ReservedBookCard(
+                        image: book['pic_path'] ?? '',
+                        title: book['title'] ?? 'Unknown Title',
+                        author: book['author'] ?? 'Unknown Author',
+                        expected: book['expiry_date'] ?? '',
+                        reservationId: book['reservation_id'],
+                        isbn: book['isbn'],
+                        onCancelled: _loadReservedBooks,
+                      );
+                    },
+                  ),
+          ),
         ],
       ),
       bottomNavigationBar: const RoleBottomNav(currentIndex: 1),
@@ -109,27 +189,11 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-class ReservedBookList extends StatelessWidget {
-  const ReservedBookList({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      children: const [
-        ReservedBookCard(
-          image:
-              "https://cdn.pixabay.com/photo/2015/11/19/21/10/brain-1052048_1280.jpg",
-          title: "The Future of Artificial Intelligence",
-          author: "Jane Smith",
-          expected: "Expected: 9/11/2025",
-        ),
-      ],
-    );
-  }
-}
-
 class ReservedBookCard extends StatelessWidget {
   final String image, title, author, expected;
+  final int? reservationId;
+  final VoidCallback onCancelled;
+  final String? isbn;
 
   const ReservedBookCard({
     super.key,
@@ -137,7 +201,90 @@ class ReservedBookCard extends StatelessWidget {
     required this.title,
     required this.author,
     required this.expected,
+    this.reservationId,
+    required this.onCancelled,
+    this.isbn,
   });
+
+  Future<void> _cancelReservation(BuildContext context) async {
+    if (reservationId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cannot cancel: Invalid reservation')),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF22232A),
+          title: const Text(
+            'Cancel Reservation',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            'Are you sure you want to cancel your reservation for "$title"?',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('No', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Yes', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final email = AuthService.getCurrentUserEmail();
+      if (email == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('User not logged in')));
+        }
+        return;
+      }
+
+      final result = await BookService.cancelReservation(
+        reservationId: reservationId!,
+        userEmail: email,
+      );
+
+      if (context.mounted) {
+        if (result.ok) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Reservation for "$title" cancelled successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          onCancelled(); // Refresh the list
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -158,8 +305,8 @@ class ReservedBookCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   child: BookImage(
                     image,
-                    width: 54,
-                    height: 60,
+                    width: 90,
+                    height: 120,
                     fit: BoxFit.cover,
                   ),
                 ),
@@ -217,49 +364,7 @@ class ReservedBookCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: const Color(0xFF22232A),
-                            title: const Text(
-                              'Cancel Reservation',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                            content: Text(
-                              'Are you sure you want to cancel your reservation for "$title"?',
-                              style: const TextStyle(color: Colors.white70),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text(
-                                  'No',
-                                  style: TextStyle(color: Colors.grey),
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Reservation for "$title" has been cancelled',
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: const Text(
-                                  'Yes',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
+                    onPressed: () => _cancelReservation(context),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
                     ),
@@ -286,6 +391,7 @@ class ReservedBookCard extends StatelessWidget {
                           'image': image,
                           'description': 'Book details for $title',
                           'available': false,
+                          if (isbn != null && isbn!.isNotEmpty) 'isbn': isbn,
                         },
                       );
                     },

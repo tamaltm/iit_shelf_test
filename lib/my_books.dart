@@ -2,57 +2,8 @@ import 'package:flutter/material.dart';
 import 'custom_app_bar.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
-import 'book_resources.dart';
 import 'book_image.dart';
-
-// Define a single Book model to represent all states
-class Book {
-  final String image, title, author, dueLabel, id;
-  final Color dueColor;
-
-  Book({
-    required this.image,
-    required this.title,
-    required this.author,
-    required this.dueLabel,
-    required this.dueColor,
-    required this.id,
-  });
-}
-
-// Example mock lists; replace or populate from backend/API
-final borrowedBooks = [
-  Book(
-    image: bookResources[2]['image']!,
-    title: bookResources[2]['title']!,
-    author: bookResources[2]['author']!,
-    dueLabel: "Due in 2 days",
-    dueColor: Colors.teal,
-    id: "824(B)",
-  ),
-];
-
-final returnedBooks = [
-  Book(
-    image: bookResources[3]['image']!,
-    title: bookResources[3]['title']!,
-    author: bookResources[3]['author']!,
-    dueLabel: "Returned 3 days ago",
-    dueColor: Colors.grey,
-    id: "823(A)",
-  ),
-];
-
-final reservedBooks = [
-  Book(
-    image: bookResources[0]['image']!,
-    title: bookResources[0]['title']!,
-    author: bookResources[0]['author']!,
-    dueLabel: "Expected: 9/11/2025",
-    dueColor: Colors.orange,
-    id: "901(Q)",
-  ),
-];
+import 'book_service.dart';
 
 class BookHistoryPage extends StatelessWidget {
   const BookHistoryPage({super.key});
@@ -151,32 +102,154 @@ class _TabButton extends StatelessWidget {
   }
 }
 
-class BookHistoryList extends StatelessWidget {
+class BookHistoryList extends StatefulWidget {
   const BookHistoryList({super.key});
 
   @override
+  State<BookHistoryList> createState() => _BookHistoryListState();
+}
+
+class _BookHistoryListState extends State<BookHistoryList> {
+  List<Map<String, dynamic>> _allTransactions = [];
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) {
+      setState(() {
+        _error = 'User not logged in';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      final response = await BookService.getUserTransactions(
+        email,
+        status: 'all',
+      );
+      if (mounted) {
+        setState(() {
+          _allTransactions = response;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load transaction history';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Merge all book lists
-    final allBooks = <Book>[];
-    allBooks.addAll(borrowedBooks);
-    allBooks.addAll(returnedBooks);
-    allBooks.addAll(reservedBooks);
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Text(_error!, style: const TextStyle(color: Colors.red)),
+      );
+    }
+
+    if (_allTransactions.isEmpty) {
+      return const Center(
+        child: Text(
+          'No transaction history',
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      );
+    }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      itemCount: allBooks.length,
+      itemCount: _allTransactions.length,
       itemBuilder: (context, index) {
-        final book = allBooks[index];
+        final transaction = _allTransactions[index];
+
+        // Determine label and color based on transaction type
+        String dueLabel = '';
+        Color dueColor = Colors.grey;
+
+        if (transaction['type'] == 'borrowed' ||
+            transaction['type'] == 'overdue') {
+          final daysUntilDue = _calculateDaysUntilDue(transaction['due_date']);
+          if (daysUntilDue > 0) {
+            dueLabel = "Due in $daysUntilDue days";
+            dueColor = daysUntilDue <= 3 ? Colors.red : Colors.teal;
+          } else {
+            dueLabel = "Overdue by ${daysUntilDue.abs()} days";
+            dueColor = Colors.red;
+          }
+        } else if (transaction['type'] == 'returned') {
+          final daysSinceReturn = _calculateDaysSinceReturn(
+            transaction['return_date'],
+          );
+          dueLabel = "Returned $daysSinceReturn days ago";
+          dueColor = Colors.grey;
+        } else if (transaction['type'] == 'reserved') {
+          dueLabel = "Expected: ${transaction['expiry_date']}";
+          dueColor = Colors.orange;
+        } else if (transaction['type'] == 'pending') {
+          final hoursRemaining = transaction['expires_in_hours'] ?? 0;
+          final minutesRemaining = transaction['expires_in_minutes'] ?? 0;
+          final isExpired = transaction['is_expired'] ?? false;
+
+          if (isExpired) {
+            dueLabel = "Request expired";
+            dueColor = Colors.red;
+          } else if (hoursRemaining > 0) {
+            dueLabel = "Expires in ${hoursRemaining}h ${minutesRemaining}m";
+            dueColor = hoursRemaining < 6 ? Colors.orange : Colors.blue;
+          } else {
+            dueLabel = "Expires in ${minutesRemaining}m";
+            dueColor = Colors.red;
+          }
+        }
+
         return BookHistoryCard(
-          image: book.image,
-          title: book.title,
-          author: book.author,
-          dueLabel: book.dueLabel,
-          dueColor: book.dueColor,
-          id: book.id,
+          image: transaction['pic_path'] ?? '',
+          title: transaction['title'] ?? 'Unknown Title',
+          author: transaction['author'] ?? 'Unknown Author',
+          dueLabel: dueLabel,
+          dueColor: dueColor,
+          id: transaction['isbn'] ?? '',
         );
       },
     );
+  }
+
+  int _calculateDaysUntilDue(String? dueDate) {
+    if (dueDate == null) return 0;
+    try {
+      final due = DateTime.parse(dueDate);
+      final now = DateTime.now();
+      return due.difference(now).inDays;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  int _calculateDaysSinceReturn(String? returnDate) {
+    if (returnDate == null) return 0;
+    try {
+      final returned = DateTime.parse(returnDate);
+      final now = DateTime.now();
+      return now.difference(returned).inDays;
+    } catch (e) {
+      return 0;
+    }
   }
 }
 
@@ -280,34 +353,6 @@ class BookHistoryCard extends StatelessWidget {
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
-                        '/return-details',
-                        arguments: {
-                          'title': title,
-                          'image': image,
-                          'author': author,
-                          'bookId': id,
-                        },
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      "Return",
-                      style: TextStyle(color: Colors.black),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
                         '/book-detail',
                         arguments: {
                           'title': title,
@@ -315,6 +360,7 @@ class BookHistoryCard extends StatelessWidget {
                           'image': image,
                           'description': 'Book details for $title',
                           'available': false,
+                          'isbn': id,
                         },
                       );
                     },

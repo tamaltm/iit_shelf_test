@@ -1,11 +1,93 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'custom_app_bar.dart';
 
-class LibrarianDashboardPage extends StatelessWidget {
+class LibrarianDashboardPage extends StatefulWidget {
   const LibrarianDashboardPage({super.key});
 
   @override
+  State<LibrarianDashboardPage> createState() => _LibrarianDashboardPageState();
+}
+
+class _LibrarianDashboardPageState extends State<LibrarianDashboardPage> {
+  int _totalBooks = 0;
+  int _pendingReturns = 0;
+  int _pendingRequests = 0;
+  double _finesCollectedToday = 0.0;
+  int _returnApprovals = 0;
+  int _newBookRequests = 0;
+  int _paymentVerifications = 0;
+  List<dynamic> _recentActivity = [];
+  bool _isLoading = true;
+
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (Platform.isAndroid) return 'http://32.0.2.182:8000';
+    return 'http://localhost:8000';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  Future<void> _loadDashboardData() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/librarian/dashboard_stats.php'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            _totalBooks = data['stats']['total_books'];
+            _pendingReturns = data['stats']['pending_returns'];
+            _pendingRequests = data['stats']['pending_requests'];
+            _finesCollectedToday = data['stats']['fines_collected_today']
+                .toDouble();
+            _returnApprovals = data['stats']['return_approvals'];
+            _newBookRequests = data['stats']['new_book_requests'];
+            _paymentVerifications = data['stats']['payment_verifications'];
+            _recentActivity = data['recent_activity'] ?? [];
+            _isLoading = false;
+          });
+        } else {
+          _handleError(
+            'Failed to load dashboard data: ${data['message'] ?? 'Unknown error'}',
+          );
+        }
+      } else {
+        _handleError('Failed to load dashboard data: ${response.statusCode}');
+      }
+    } catch (e) {
+      _handleError('Error: $e');
+    }
+  }
+
+  void _handleError(String message) {
+    if (mounted) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF1A1B1E),
+        appBar: const CustomAppBar(userRole: 'librarian'),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
       appBar: const CustomAppBar(userRole: 'librarian'),
@@ -25,28 +107,28 @@ class LibrarianDashboardPage extends StatelessWidget {
                 _buildStatCard(
                   context,
                   "Total Books",
-                  "450",
+                  _totalBooks.toString(),
                   Icons.menu_book,
                   Colors.blue,
                 ),
                 _buildStatCard(
                   context,
                   "Pending Returns",
-                  "28",
+                  _pendingReturns.toString(),
                   Icons.hourglass_empty,
                   Colors.red,
                 ),
                 _buildStatCard(
                   context,
                   "Pending Requests",
-                  "7",
+                  _pendingRequests.toString(),
                   Icons.calendar_today,
                   Colors.red,
                 ),
                 _buildStatCard(
                   context,
                   "Fines Collected Today",
-                  "300",
+                  "TK ${_finesCollectedToday.toStringAsFixed(2)}",
                   Icons.account_balance_wallet,
                   Colors.green,
                 ),
@@ -76,14 +158,24 @@ class LibrarianDashboardPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildTaskItem(context, "Return Approvals", 7, Colors.red),
+                  _buildTaskItem(
+                    context,
+                    "Return Approvals",
+                    _returnApprovals,
+                    Colors.red,
+                  ),
                   const SizedBox(height: 12),
-                  _buildTaskItem(context, "New Book Requests", 3, Colors.blue),
+                  _buildTaskItem(
+                    context,
+                    "New Book Requests",
+                    _newBookRequests,
+                    Colors.blue,
+                  ),
                   const SizedBox(height: 12),
                   _buildTaskItem(
                     context,
                     "Payment Verifications",
-                    2,
+                    _paymentVerifications,
                     Colors.green,
                   ),
                 ],
@@ -188,41 +280,36 @@ class LibrarianDashboardPage extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildActivityItem(
-                    context,
-                    "2 min ago",
-                    'User Sarah B. borrowed "The Complete Gui..."',
-                    Icons.menu_book,
-                    Colors.blue,
-                  ),
-                  _buildActivityItem(
-                    context,
-                    "10 min ago",
-                    'User John D. returned "Database Manage..."',
-                    Icons.check_circle,
-                    Colors.green,
-                  ),
-                  _buildActivityItem(
-                    context,
-                    "30 min ago",
-                    "User Alex L. paid TK 20.00 fine",
-                    Icons.payment,
-                    Colors.red,
-                  ),
-                  _buildActivityItem(
-                    context,
-                    "1 hour ago",
-                    'User Maria G. borrowed "System Engineer..."',
-                    Icons.menu_book,
-                    Colors.blue,
-                  ),
-                  _buildActivityItem(
-                    context,
-                    "2 hours ago",
-                    'User David P. requested for addition "Sapi..."',
-                    Icons.add_circle,
-                    Colors.green,
-                  ),
+                  if (_recentActivity.isEmpty)
+                    Text(
+                      "No recent activity",
+                      style: TextStyle(color: Colors.grey, fontSize: 14),
+                    )
+                  else
+                    ..._recentActivity.map((activity) {
+                      String activityDesc = _formatActivityItem(activity);
+                      String timeAgo = _getTimeAgo(activity['issue_date']);
+                      IconData icon = activity['status'] == 'Returned'
+                          ? Icons.check_circle
+                          : Icons.menu_book;
+                      Color color = activity['status'] == 'Returned'
+                          ? Colors.green
+                          : Colors.blue;
+
+                      return Column(
+                        children: [
+                          _buildActivityItem(
+                            context,
+                            timeAgo,
+                            activityDesc,
+                            icon,
+                            color,
+                          ),
+                          if (activity != _recentActivity.last)
+                            const SizedBox(height: 12),
+                        ],
+                      );
+                    }).toList(),
                 ],
               ),
             ),
@@ -233,6 +320,44 @@ class LibrarianDashboardPage extends StatelessWidget {
       ),
       bottomNavigationBar: _buildBottomNav(context),
     );
+  }
+
+  String _formatActivityItem(dynamic activity) {
+    final String title = activity['title'] ?? 'Unknown';
+    final String name = activity['name'] ?? 'User';
+    final String status = activity['status'] ?? 'Borrowed';
+
+    String truncatedTitle = title.length > 20
+        ? '${title.substring(0, 20)}...'
+        : title;
+
+    if (status == 'Borrowed') {
+      return 'User ${name.split(' ')[0]} borrowed "$truncatedTitle"';
+    } else if (status == 'Returned') {
+      return 'User ${name.split(' ')[0]} returned "$truncatedTitle"';
+    }
+    return 'User ${name.split(' ')[0]} interacted with "$truncatedTitle"';
+  }
+
+  String _getTimeAgo(dynamic timestamp) {
+    if (timestamp == null) return 'Recently';
+
+    try {
+      DateTime dateTime = DateTime.parse(timestamp.toString());
+      Duration difference = DateTime.now().difference(dateTime);
+
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      } else if (difference.inMinutes < 60) {
+        return '${difference.inMinutes} min ago';
+      } else if (difference.inHours < 24) {
+        return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+      } else {
+        return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
   }
 
   Widget _buildStatCard(

@@ -17,10 +17,12 @@ if ($path === '' || $path === '/') {
 }
 
 // Map requests to api/ directory
-// /auth/* -> api/auth/*
-// /books/* -> api/books/*
-// etc.
-$file = __DIR__ . '/api/' . $path;
+// If request already starts with 'api/', map directly. Otherwise, prefix 'api/'.
+if (strpos($path, 'api/') === 0) {
+    $file = __DIR__ . '/' . $path;
+} else {
+    $file = __DIR__ . '/api/' . $path;
+}
 
 // Check if file exists
 if (is_file($file)) {

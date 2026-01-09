@@ -243,29 +243,6 @@ class BookHistoryCard extends StatelessWidget {
                     onPressed: () {
                       Navigator.pushNamed(
                         context,
-                        '/return-details',
-                        arguments: {
-                          'title': title,
-                          'image': image,
-                          'author': author,
-                          'bookId': id,
-                        },
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
-                    child: const Text("Return", style: TextStyle(color: Colors.black)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
                         '/book-detail',
                         arguments: {
                           'title': title,
@@ -273,6 +250,7 @@ class BookHistoryCard extends StatelessWidget {
                           'image': image,
                           'description': 'Book details for $title',
                           'available': false,
+                          'isbn': id,
                         },
                       );
                     },

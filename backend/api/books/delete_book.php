@@ -20,13 +20,13 @@ if (empty($isbn)) {
 try {
     $db->beginTransaction();
 
-    // Soft delete the book
-    $stmt = $db->prepare('UPDATE books SET is_deleted = 1, updated_at = NOW() WHERE isbn = :isbn');
+    // Soft delete: mark image path and title so rowcount is >0 even if pic_path is NULL
+    $stmt = $db->prepare('UPDATE Books SET pic_path = CONCAT("[DELETED]", COALESCE(pic_path, "")), title = CONCAT("[DELETED] ", title) WHERE isbn = :isbn');
     $stmt->bindParam(':isbn', $isbn);
     $stmt->execute();
 
     // Mark all copies as discarded
-    $copyStmt = $db->prepare('UPDATE book_copies SET is_deleted = 1, status = "Discarded", updated_at = NOW() WHERE isbn = :isbn');
+    $copyStmt = $db->prepare('UPDATE Book_Copies SET status = "Discarded" WHERE isbn = :isbn');
     $copyStmt->bindParam(':isbn', $isbn);
     $copyStmt->execute();
 
@@ -35,7 +35,7 @@ try {
         http_response_code(200);
         echo json_encode([
             'success' => true,
-            'message' => 'Book removed (soft delete) successfully',
+            'message' => 'Book removed successfully',
         ]);
     } else {
         $db->rollBack();
