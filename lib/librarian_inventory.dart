@@ -84,6 +84,16 @@ class LibrarianInventoryPage extends StatelessWidget {
                 Navigator.pushNamed(context, '/add-course');
               },
             ),
+            const SizedBox(height: 20),
+            _buildActionCard(
+              context,
+              "Edit Course",
+              Icons.edit_note,
+              Colors.purple,
+              () {
+                Navigator.pushNamed(context, '/edit-course');
+              },
+            ),
 
             const SizedBox(height: 20),
           ],

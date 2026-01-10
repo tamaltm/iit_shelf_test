@@ -31,6 +31,7 @@ import 'remove_book.dart';
 import 'edit_book.dart';
 import 'edit_book_detail.dart';
 import 'add_course.dart';
+import 'edit_course.dart';
 import 'generate_reports.dart';
 import 'transaction_history.dart';
 import 'return_details.dart';
@@ -82,7 +83,7 @@ class _IITShelfAppState extends State<IITShelfApp> {
   Widget build(BuildContext context) {
     final email = AuthService.getCurrentUserEmail();
     final role = AuthService.getCurrentUserRole();
-    
+
     return MaterialApp(
       title: 'IITShelf — Digital Library',
       theme: _themeService.currentTheme,
@@ -100,7 +101,9 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/teacher-my-books': (context) => const TeacherMyBooksPage(),
         '/librarian-dashboard': (context) => const LibrarianDashboardPage(),
         '/librarian-addition-request-details': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>?;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>?;
           final rid = int.tryParse('${args?['request_id']}') ?? 0;
           return LibrarianAdditionRequestDetailsPage(requestId: rid);
         },
@@ -119,10 +122,12 @@ class _IITShelfAppState extends State<IITShelfApp> {
         '/remove-book': (context) => const RemoveBookPage(),
         '/edit-book': (context) => const EditBookPage(),
         '/edit-book-detail': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as booksvc.Book;
+          final args =
+              ModalRoute.of(context)!.settings.arguments as booksvc.Book;
           return EditBookDetailPage(book: args);
         },
         '/add-course': (context) => const AddCoursePage(),
+        '/edit-course': (context) => const EditCoursePage(),
         '/generate-reports': (context) {
           final args =
               ModalRoute.of(context)!.settings.arguments

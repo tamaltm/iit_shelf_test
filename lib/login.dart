@@ -309,39 +309,8 @@ class _LoginPageState extends State<LoginPage> {
                     style: TextStyle(color: Colors.grey[400]),
                   ),
                 ),
+                // Demo credentials removed
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Colors.blue.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        "Demo Credentials:",
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      _buildDemoCredential("Student", "student"),
-                      _buildDemoCredential("Teacher", "teacher"),
-                      _buildDemoCredential("Librarian", "librarian"),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Password: 123",
-                        style: TextStyle(color: Colors.grey[400], fontSize: 11),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -350,13 +319,5 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  Widget _buildDemoCredential(String role, String email) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Text(
-        "$role: $email",
-        style: TextStyle(color: Colors.grey[300], fontSize: 11),
-      ),
-    );
-  }
+  // Demo credentials helper removed
 }
