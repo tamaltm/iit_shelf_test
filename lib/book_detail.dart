@@ -18,6 +18,9 @@ class BookDetailPage extends StatefulWidget {
   final String? publisher;
   final String? courseId;
   final int totalCopies;
+  final int? availableCopies;
+  final String? edition;
+  final String? category;
 
   const BookDetailPage({
     super.key,
@@ -37,6 +40,9 @@ class BookDetailPage extends StatefulWidget {
     this.publisher,
     this.courseId,
     this.totalCopies = 0,
+    this.availableCopies,
+    this.edition,
+    this.category,
   });
 
   @override
@@ -48,12 +54,43 @@ class _BookDetailPageState extends State<BookDetailPage> {
   bool _isLoading = true;
   bool _isUserBorrowed = false; // Track if user has already borrowed this book
   bool _returnRequestSubmitted = false; // Track if return request was submitted
+  Map<String, dynamic>? _bookData; // Store fetched complete book data
+  String? _userRole; // Track current user role
 
   @override
   void initState() {
     super.initState();
+    _userRole = AuthService.getCurrentUserRole();
     _fetchBookStatus();
     _checkIfUserBorrowed();
+    if (widget.isbn != null && widget.isbn!.isNotEmpty) {
+      _fetchCompleteBookInfo();
+    }
+  }
+
+  Future<void> _fetchCompleteBookInfo() async {
+    try {
+      final books = await BookService.fetchBooks(search: widget.isbn);
+      if (books.isNotEmpty) {
+        final book = books.firstWhere(
+          (b) => b.isbn == widget.isbn,
+          orElse: () => books.first,
+        );
+        if (mounted) {
+          setState(() {
+            _bookData = {
+              'edition': book.edition,
+              'category': book.category,
+              'publisher': book.publisher,
+              'availableQuantity': book.availableQuantity,
+              'quantity': book.quantity,
+            };
+          });
+        }
+      }
+    } catch (e) {
+      // Silently fail - use data from widget
+    }
   }
 
   Future<void> _fetchBookStatus() async {
@@ -239,13 +276,6 @@ class _BookDetailPageState extends State<BookDetailPage> {
   @override
   Widget build(BuildContext context) {
     final available = _isAvailable ?? widget.available;
-    final currentRole =
-        (widget.role.isNotEmpty
-                ? widget.role
-                : (AuthService.getCurrentUserRole() ?? 'Student'))
-            .toLowerCase();
-    final canUpdatePdf =
-        currentRole == 'librarian' || currentRole == 'director';
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -384,37 +414,6 @@ class _BookDetailPageState extends State<BookDetailPage> {
                                 ),
                               ),
                             ),
-                            if (canUpdatePdf)
-                              InkWell(
-                                onTap: () {
-                                  Navigator.pushNamed(
-                                    context,
-                                    '/upload-pdf',
-                                    arguments: {
-                                      'mode': 'update',
-                                      'bookTitle': widget.title,
-                                    },
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: const Text(
-                                    'Update PDF',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                         const SizedBox(height: 24),
@@ -431,175 +430,140 @@ class _BookDetailPageState extends State<BookDetailPage> {
                           style: const TextStyle(fontSize: 14, height: 1.5),
                         ),
                         const SizedBox(height: 24),
+                        const Text(
+                          "Book Information",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: const Color(0xFF2C2D35),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          child: Column(
                             children: [
-                              Column(
-                                children: [
-                                  const Text(
-                                    'ISBN',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.isbn ?? 'N/A',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  const Text(
-                                    'Pages',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.pages?.toString() ?? 'N/A',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Column(
-                                children: [
-                                  const Text(
-                                    'Year',
-                                    style: TextStyle(
-                                      color: Colors.grey,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    widget.year?.toString() ?? 'N/A',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              _buildInfoRow('ISBN', widget.isbn ?? 'N/A'),
+                              const Divider(color: Colors.grey, height: 20),
+                              _buildInfoRow('Author', widget.author),
+                              const Divider(color: Colors.grey, height: 20),
+                              _buildInfoRow('Publisher', (_bookData?['publisher'] ?? widget.publisher) ?? 'N/A'),
+                              const Divider(color: Colors.grey, height: 20),
+                              _buildInfoRow('Publication Year', widget.year?.toString() ?? 'N/A'),
+                              const Divider(color: Colors.grey, height: 20),
+                              _buildInfoRow('Edition', (_bookData?['edition'] ?? widget.edition) ?? 'N/A'),
+                              const Divider(color: Colors.grey, height: 20),
+                              _buildInfoRow('Category', (_bookData?['category'] ?? widget.category) ?? 'N/A'),
+                              if ((widget.totalCopies > 0) || (_bookData?['quantity'] ?? 0) > 0) ...[
+                                const Divider(color: Colors.grey, height: 20),
+                                _buildInfoRow('Total Copies', ((_bookData?['quantity'] ?? widget.totalCopies) ?? 0).toString()),
+                                const Divider(color: Colors.grey, height: 20),
+                                _buildInfoRow('Available Copies', '${(_bookData?['availableQuantity'] ?? widget.availableCopies) ?? 0}/${(_bookData?['quantity'] ?? widget.totalCopies) ?? 0}'),
+                              ],
                             ],
                           ),
                         ),
                         const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _returnRequestSubmitted
-                                ? null
-                                : (_isUserBorrowed
-                                      ? () => _requestReturn(context)
-                                      : (available
-                                            ? () => _borrow(context)
-                                            : null)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: _returnRequestSubmitted
-                                  ? Colors.grey
-                                  : Colors.blue,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              _returnRequestSubmitted
-                                  ? "Requested"
+                        // Hide borrow/reserve buttons for librarians
+                        if (_userRole?.toLowerCase() != 'librarian') ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed: _returnRequestSubmitted
+                                  ? null
                                   : (_isUserBorrowed
-                                        ? "Request to Return"
+                                        ? () => _requestReturn(context)
                                         : (available
-                                              ? "Borrow Book"
-                                              : "Return Book")),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Show Reserve button only if book has physical copies, otherwise show Download PDF
-                        if (widget.totalCopies > 0)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () => _reserve(context),
+                                              ? () => _borrow(context)
+                                              : null)),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.purple,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
+                                backgroundColor: _returnRequestSubmitted
+                                    ? Colors.grey
+                                    : (_isUserBorrowed ? Colors.blue : (available ? Colors.blue : Colors.grey)),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                               ),
-                              child: const Text(
-                                "Reserve Book",
-                                style: TextStyle(
+                              child: Text(
+                                _returnRequestSubmitted
+                                    ? "Requested"
+                                    : (_isUserBorrowed
+                                          ? "Request to Return"
+                                          : (available
+                                                ? "Borrow Book"
+                                                : "Not Available")),
+                                style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
-                          )
-                        else if (widget.pdfAvailable &&
-                            (widget.pdfUrl ?? '').isNotEmpty)
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final url = Uri.parse(widget.pdfUrl!);
-                                final ok = await launchUrl(
-                                  url,
-                                  mode: LaunchMode.externalApplication,
-                                );
-                                if (!ok && context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Could not open PDF'),
+                          ),
+                          const SizedBox(height: 12),
+                          // Show Reserve button only if book has physical copies but NO available copies
+                          if (widget.totalCopies > 0 && !(_isAvailable ?? widget.available) && !_isUserBorrowed)
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => _reserve(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.purple,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text(
+                                  "Reserve Book",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ] else ...[
+                          // Message for librarians
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.orange.withOpacity(0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: Colors.orange,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Librarians cannot borrow or reserve books',
+                                    style: TextStyle(
+                                      color: Colors.orange,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
                                     ),
-                                  );
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                                  ),
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                              child: const Text(
-                                "Download PDF",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                              ],
                             ),
                           ),
+                        ],
                         const SizedBox(height: 30),
                       ],
                     ),
@@ -607,6 +571,33 @@ class _BookDetailPageState extends State<BookDetailPage> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label + ':',
+          style: const TextStyle(
+            color: Colors.grey,
+            fontSize: 13,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
     );
   }
 }

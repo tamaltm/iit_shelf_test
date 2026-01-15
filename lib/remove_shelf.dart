@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'shelf_service.dart';
+import 'widgets/notification_bell.dart';
 
 class RemoveShelfPage extends StatefulWidget {
   const RemoveShelfPage({super.key});
@@ -56,11 +57,8 @@ class _RemoveShelfPageState extends State<RemoveShelfPage> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {},
-          ),
+        actions: const [
+          NotificationBell(iconColor: Colors.white),
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: CircleAvatar(

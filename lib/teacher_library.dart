@@ -256,6 +256,9 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                               pdfAvailable: pdfAvailable,
                               pdfUrl: book.pdfUrl,
                               totalCopies: book.quantity,
+                              availableCopies: book.availableQuantity,
+                              edition: book.edition,
+                              category: book.category,
                             ),
                           ),
                         ).then(
@@ -311,6 +314,10 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                             year: book.publicationYear,
                             publisher: book.publisher,
                             courseId: book.courseId,
+                            totalCopies: book.quantity,
+                            availableCopies: book.availableQuantity,
+                            edition: book.edition,
+                            category: book.category,
                           ),
                         ),
                       ).then(

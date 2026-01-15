@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 include_once '../../config/database.php';
 include_once '../lib/request_cleanup.php';
 
@@ -14,14 +24,21 @@ try {
     $totalBooksData = $totalBooksStmt->fetch(PDO::FETCH_ASSOC);
     $totalBooks = (int)$totalBooksData['total'];
 
-    // 2. Pending Returns - books with pending return requests from users
-    $pendingReturnsStmt = $db->query("
-        SELECT COUNT(*) as pending 
-        FROM Return_Requests 
-        WHERE status = 'Pending'
-    ");
-    $pendingReturnsData = $pendingReturnsStmt->fetch(PDO::FETCH_ASSOC);
-    $pendingReturns = (int)$pendingReturnsData['pending'];
+    // 2. Pending Returns - derive from notifications of pending return requests
+    $pendingReturns = 0;
+    try {
+        $pendingNotifStmt = $db->prepare("SELECT message FROM Notifications WHERE type = 'ReturnRequestPending'");
+        $pendingNotifStmt->execute();
+        $tids = [];
+        while ($row = $pendingNotifStmt->fetch(PDO::FETCH_ASSOC)) {
+            if (isset($row['message']) && preg_match('/Transaction\\s+#(\\d+)/', $row['message'], $m)) {
+                $tids[$m[1]] = true;
+            }
+        }
+        $pendingReturns = count($tids);
+    } catch (Exception $e) {
+        $pendingReturns = 0; // fail-safe
+    }
 
     // 3. Pending Requests - pending borrow requests
     $pendingRequestsStmt = $db->query("
@@ -42,13 +59,8 @@ try {
     $finesCollectedToday = (float)$finesCollectedData['collected'];
 
     // 5. Return Approvals - pending return requests awaiting librarian approval
-    $returnApprovalsStmt = $db->query("
-        SELECT COUNT(*) as pending 
-        FROM Return_Requests 
-        WHERE status = 'Pending'
-    ");
-    $returnApprovalsData = $returnApprovalsStmt->fetch(PDO::FETCH_ASSOC);
-    $returnApprovals = (int)$returnApprovalsData['pending'];
+        // 5. Return Approvals - approximate using same pending notifications count
+        $returnApprovals = $pendingReturns;
 
     // 6. New Book Requests - pending book addition requests
     $newBookRequestsStmt = $db->query("

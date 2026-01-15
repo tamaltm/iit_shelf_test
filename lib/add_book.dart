@@ -14,6 +14,8 @@ class AddBookPage extends StatefulWidget {
 }
 
 class _AddBookPageState extends State<AddBookPage> {
+  static const String _addNewCategoryValue = '__add_new_category__';
+
   late final TextEditingController _titleController;
   late final TextEditingController _isbnController;
   late final TextEditingController _authorController;
@@ -33,11 +35,15 @@ class _AddBookPageState extends State<AddBookPage> {
 
   bool _isSubmitting = false;
   String? _selectedImagePath;
-  String? _selectedCourse;
+  List<String> _selectedCourses = []; // Changed to list for multi-select
   String _bookType = 'physical'; // 'physical' or 'digital'
   List<Course> _courses = [];
   bool _coursesLoading = true;
   String? _coursesError;
+  List<String> _categories = [];
+  bool _categoriesLoading = true;
+  bool _addingNewCategory = false;
+  String? _selectedCategory;
   List<ShelfLocation> _shelfLocations = [];
   bool _shelfLocationsLoading = true;
   final ImagePicker _imagePicker = ImagePicker();
@@ -61,6 +67,7 @@ class _AddBookPageState extends State<AddBookPage> {
     _conditionNoteController = TextEditingController();
     _copiesTotalController.addListener(_handleCopiesTotalChange);
     _loadCourses();
+    _loadCategories();
     _loadShelfLocations();
   }
 
@@ -206,23 +213,32 @@ class _AddBookPageState extends State<AddBookPage> {
     }
 
     // Build copy locations list
-    List<Map<String, int>>? copyLocationsList;
+    List<Map<String, dynamic>>? copyLocationsList;
     if (copiesTotal != null && copiesTotal > 0 && _copyLocations.isNotEmpty) {
-      copyLocationsList = _copyLocations
+      final locations = _copyLocations
           .map((loc) => loc?.toJson() ?? {})
           .where((loc) => loc.isNotEmpty)
-          .toList()
-          .cast<Map<String, int>>();
+          .toList();
+      if (locations.isNotEmpty) {
+        copyLocationsList = locations.cast<Map<String, dynamic>>();
+      }
     }
+
+    final categoryValue = _addingNewCategory
+        ? _categoryController.text.trim()
+        : (_selectedCategory ?? '').trim();
+
+    // Send selected courses (array) - filter out empty or 'NONE'
+    final courseIds = _selectedCourses
+        .where((c) => c.isNotEmpty && c != 'NONE')
+        .toList();
 
     final payload = BookPayload(
       title: _titleController.text.trim(),
       author: _authorController.text.trim(),
       isbn: _isbnController.text.trim(),
-      courseId: _selectedCourse,
-      category: _categoryController.text.trim().isEmpty
-          ? null
-          : _categoryController.text.trim(),
+      courseIds: courseIds.isEmpty ? null : courseIds, // Send array
+      category: categoryValue.isEmpty ? null : categoryValue,
       publisher: _publisherController.text.trim().isEmpty
           ? null
           : _publisherController.text.trim(),
@@ -248,6 +264,11 @@ class _AddBookPageState extends State<AddBookPage> {
       copyIds: copyIds,
       copyLocations: copyLocationsList,
     );
+
+    // Debug logging
+    print('Payload: ${payload.toJson()}');
+    print('Copy IDs: $copyIds');
+    print('Copy Locations: $copyLocationsList');
 
     final result = await BookService.addBook(
       payload,
@@ -328,7 +349,7 @@ class _AddBookPageState extends State<AddBookPage> {
       setState(() {
         _coursesLoading = false;
         _coursesError = 'Could not load courses. Tap to retry.';
-        _selectedCourse = null;
+        _selectedCourses = [];
       });
       return;
     }
@@ -336,7 +357,27 @@ class _AddBookPageState extends State<AddBookPage> {
     setState(() {
       _courses = fetched;
       _coursesLoading = false;
-      _selectedCourse = fetched.first.id;
+      _selectedCourses = []; // Start with no courses selected
+    });
+  }
+
+  Future<void> _loadCategories() async {
+    setState(() {
+      _categoriesLoading = true;
+    });
+
+    final fetched = await BookService.fetchCategories();
+
+    if (!mounted) return;
+
+    setState(() {
+      _categories = fetched;
+      _categoriesLoading = false;
+      _selectedCategory = null;
+      _addingNewCategory = fetched.isEmpty;
+      if (!_addingNewCategory) {
+        _categoryController.clear();
+      }
     });
   }
 
@@ -449,7 +490,7 @@ class _AddBookPageState extends State<AddBookPage> {
             const SizedBox(height: 16),
             _buildInfoField("Author:", _authorController),
             const SizedBox(height: 16),
-            _buildInfoField("Category (optional):", _categoryController),
+            _buildCategorySelector(),
             const SizedBox(height: 16),
             _buildInfoField("Publisher (optional):", _publisherController),
             const SizedBox(height: 16),
@@ -641,25 +682,27 @@ class _AddBookPageState extends State<AddBookPage> {
               ),
             ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2D35),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: TextField(
-                controller: _conditionNoteController,
-                style: const TextStyle(color: Colors.white),
-                maxLines: 2,
-                decoration: const InputDecoration(
-                  hintText:
-                      "Condition Note (optional, e.g., 'Good', 'Minor wear')",
-                  hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
-                  border: InputBorder.none,
+            if (_bookType == 'physical') ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2D35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: TextField(
+                  controller: _conditionNoteController,
+                  style: const TextStyle(color: Colors.white),
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    hintText:
+                        "Condition Note (optional, e.g., 'Good', 'Minor wear')",
+                    hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
+                    border: InputBorder.none,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
+            ],
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -747,31 +790,36 @@ class _AddBookPageState extends State<AddBookPage> {
         ),
       );
     } else {
-      child = DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCourse,
-          dropdownColor: const Color(0xFF2C2D35),
-          isExpanded: true,
-          iconEnabledColor: Colors.white,
-          style: const TextStyle(color: Colors.white),
-          items: [
-            const DropdownMenuItem(value: 'NONE', child: Text('None')),
-            ..._courses
-                .map(
-                  (c) => DropdownMenuItem(
-                    value: c.id,
-                    child: Text(
-                      c.id.isNotEmpty ? '${c.id} — ${c.name}' : c.name,
-                    ),
-                  ),
-                )
-                .toList(),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _selectedCourse = value;
-            });
-          },
+      child = SizedBox(
+        height: 250, // Fixed height for scrollable area
+        child: SingleChildScrollView(
+          child: Column(
+            children: _courses.map((course) {
+              final isSelected = _selectedCourses.contains(course.id);
+              return CheckboxListTile(
+                value: isSelected,
+                title: Text(
+                  course.id.isNotEmpty ? '${course.id} — ${course.name}' : course.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  course.semester ?? '',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                ),
+                activeColor: Colors.blueAccent,
+                checkColor: Colors.white,
+                onChanged: (bool? checked) {
+                  setState(() {
+                    if (checked == true) {
+                      _selectedCourses.add(course.id);
+                    } else {
+                      _selectedCourses.remove(course.id);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
         ),
       );
     }
@@ -793,6 +841,123 @@ class _AddBookPageState extends State<AddBookPage> {
             ),
           ),
           child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    Widget dropdownSection;
+
+    if (_categoriesLoading) {
+      dropdownSection = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Text('Loading categories...', style: TextStyle(color: Colors.white70)),
+          ],
+        ),
+      );
+    } else if (_categories.isEmpty) {
+      dropdownSection = InkWell(
+        onTap: _loadCategories,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.refresh, color: Colors.orangeAccent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'No categories found. Tap to reload or add a new one.',
+                  style: const TextStyle(color: Colors.orangeAccent),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      dropdownSection = DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: _addingNewCategory ? _addNewCategoryValue : _selectedCategory,
+          dropdownColor: const Color(0xFF2C2D35),
+          isExpanded: true,
+          iconEnabledColor: Colors.white,
+          hint: const Text(
+            'Select Category',
+            style: TextStyle(color: Colors.white54),
+          ),
+          style: const TextStyle(color: Colors.white),
+          items: [
+            ..._categories
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c,
+                    child: Text(c),
+                  ),
+                )
+                .toList(),
+            const DropdownMenuItem(
+              value: _addNewCategoryValue,
+              child: Text('Add new category'),
+            ),
+          ],
+          onChanged: (value) {
+            if (value == null) return;
+            setState(() {
+              if (value == _addNewCategoryValue) {
+                _addingNewCategory = true;
+                _selectedCategory = null;
+                _categoryController.clear();
+              } else {
+                _addingNewCategory = false;
+                _selectedCategory = value;
+                _categoryController.text = value;
+              }
+            });
+          },
+        ),
+      );
+    }
+
+    final showNewField = _addingNewCategory || _categories.isEmpty;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2C2D35),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 4),
+            child: Text(
+              "Category (optional)",
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+          ),
+          dropdownSection,
+          if (showNewField) ...[
+            const SizedBox(height: 8),
+            TextField(
+              controller: _categoryController,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                hintText: 'Enter new category',
+                hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
+                border: InputBorder.none,
+              ),
+            ),
+          ],
         ],
       ),
     );

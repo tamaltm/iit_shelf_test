@@ -2,23 +2,30 @@ import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'role_bottom_nav.dart';
 import 'book_service.dart';
+import 'library.dart';
+import 'librarian_requests.dart';
+import 'profile.dart';
 
 class NotificationItem {
+  final int id;
   final IconData icon;
   final Color iconColor;
   final String title;
   final String description;
   final String timestamp;
   final String actionLabel;
+  final String type;
   final VoidCallback? onAction;
 
   NotificationItem({
+    required this.id,
     required this.icon,
     required this.iconColor,
     required this.title,
     required this.description,
     required this.timestamp,
     required this.actionLabel,
+    required this.type,
     this.onAction,
   });
 }
@@ -63,17 +70,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
         final type = notif['type'] ?? 'System';
         final message = notif['message'] ?? '';
         final sentAt = notif['sent_at'] ?? '';
+        final notifId = notif['notification_id'] ?? notif['id'] ?? 0;
 
         items.add(NotificationItem(
+          id: notifId,
           icon: _getIconForType(type),
           iconColor: _getColorForType(type),
           title: message,
           description: '',
           timestamp: _formatDateTime(sentAt),
           actionLabel: 'Read',
-          onAction: () {
-            _showSnackBar('Notification opened');
-          },
+          type: type,
+          onAction: () => _handleNotificationAction(type),
         ));
       }
 
@@ -147,6 +155,46 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
+  void _handleNotificationAction(String type) {
+    // Route based on notification type
+    if (type == 'BorrowRequestApproved' || type == 'ReturnRequestApproved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LibraryPage(userRole: widget.userRole),
+        ),
+      );
+    } else if (type == 'ReservedBookAvailable') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LibraryPage(userRole: widget.userRole),
+        ),
+      );
+    } else if (type == 'ReservationQueueUpdate') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const LibrarianRequestsPage(),
+        ),
+      );
+    } else if (type == 'DueDateReminder' || type == 'FineReminder') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const ProfilePage(),
+        ),
+      );
+    } else if (type == 'AdditionRequestApproved') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LibraryPage(userRole: widget.userRole),
+        ),
+      );
+    }
+  }
+
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -158,10 +206,89 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   void _deleteNotification(int index) {
+    final notification = notifications[index];
+    
     setState(() {
       notifications.removeAt(index);
     });
-    _showSnackBar('Notification deleted');
+    
+    // Call API to delete from backend
+    BookService.deleteNotification(notification.id, widget.userRole ?? '').then((success) {
+      if (success) {
+        _showSnackBar('Notification deleted');
+      } else {
+        // Re-add if deletion failed
+        setState(() {
+          notifications.insert(index, notification);
+        });
+        _showSnackBar('Failed to delete notification');
+      }
+    });
+  }
+
+  void _deleteAllNotifications() {
+    if (notifications.isEmpty) return;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete All Notifications'),
+          content: const Text('Are you sure you want to delete all notifications?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                
+                final email = AuthService.getCurrentUserEmail();
+                if (email == null) return;
+                
+                // Delete all notifications from backend
+                final notifsCopy = List<NotificationItem>.from(notifications);
+                setState(() {
+                  notifications.clear();
+                });
+                
+                bool allSuccess = true;
+                for (var notif in notifsCopy) {
+                  final success = await BookService.deleteNotification(notif.id, email);
+                  if (!success) {
+                    allSuccess = false;
+                  }
+                }
+                
+                if (allSuccess) {
+                  _showSnackBar('All notifications deleted');
+                } else {
+                  _showSnackBar('Some notifications could not be deleted');
+                  // Reload to get current state
+                  _loadNotifications();
+                }
+              },
+              child: const Text('Delete All', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _markAllAsRead() async {
+    if (notifications.isEmpty) return;
+    
+    final email = AuthService.getCurrentUserEmail();
+    if (email == null) return;
+    
+    final success = await BookService.markAllNotificationsAsRead(email);
+    if (success) {
+      _showSnackBar('All notifications marked as read');
+    } else {
+      _showSnackBar('Failed to mark all as read');
+    }
   }
 
   @override
@@ -171,12 +298,48 @@ class _NotificationsPageState extends State<NotificationsPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
-        automaticallyImplyLeading: false,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Notifications',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
         actions: [
+          if (notifications.isNotEmpty)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                if (value == 'mark_all_read') {
+                  _markAllAsRead();
+                } else if (value == 'delete_all') {
+                  _deleteAllNotifications();
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                const PopupMenuItem<String>(
+                  value: 'mark_all_read',
+                  child: Row(
+                    children: [
+                      Icon(Icons.done_all, size: 20),
+                      SizedBox(width: 8),
+                      Text('Mark All as Read'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem<String>(
+                  value: 'delete_all',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_sweep, size: 20, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete All', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadNotifications,

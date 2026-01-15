@@ -460,6 +460,13 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
           ),
           const SizedBox(height: 12),
           ...data.take(5).map((item) {
+            final itemMap = item as Map<String, dynamic>;
+            // Check report type by examining which fields are present
+            final isMostBorrowedReport = itemMap.containsKey('isbn') && itemMap.containsKey('title') && itemMap.containsKey('borrow_count') && !itemMap.containsKey('semester');
+            final isMostRequestedReport = itemMap.containsKey('isbn') && itemMap.containsKey('title') && itemMap.containsKey('request_count') && !itemMap.containsKey('semester');
+            final isSemesterWiseReport = itemMap.containsKey('semester') && !itemMap.containsKey('academic_year');
+            final isSessionWiseReport = itemMap.containsKey('academic_year');
+            
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
@@ -469,15 +476,196 @@ class _GenerateReportsPageState extends State<GenerateReportsPage> {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: (item as Map<String, dynamic>).entries.take(4).map((e) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Text(
-                      '${_formatKey(e.key)}: ${e.value}',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
-                    ),
-                  );
-                }).toList(),
+                children: isMostBorrowedReport
+                    ? [
+                        // Most Borrowed Books Report
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            'ISBN: ${itemMap['isbn']}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            'Title: ${itemMap['title']}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            'Author: ${itemMap['author']}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 2),
+                          child: Text(
+                            'Category: ${itemMap['category']}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 13),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.orange, width: 1),
+                            ),
+                            child: Text(
+                              'Times Borrowed: ${itemMap['borrow_count']}',
+                              style: const TextStyle(
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ]
+                    : isMostRequestedReport
+                        ? [
+                            // Most Requested Books Report
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'ISBN: ${itemMap['isbn']}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'Title: ${itemMap['title']}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'Author: ${itemMap['author']}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'Category: ${itemMap['category']}',
+                                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.blue, width: 1),
+                                ),
+                                child: Text(
+                                  'Times Requested: ${itemMap['request_count']}',
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ]
+                        : isSemesterWiseReport
+                            ? [
+                                // Semester Wise Report - Simple numbers
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 4),
+                                  child: Text(
+                                    'Semester: ${itemMap['semester'] ?? 'Unassigned'}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Text(
+                                    'Borrows: ${itemMap['borrow_count'] ?? 0}',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Text(
+                                    'Requests: ${itemMap['request_count'] ?? 0}',
+                                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 2),
+                                  child: Text(
+                                    'Users: ${itemMap['unique_borrowers'] ?? 0} | Books: ${itemMap['book_count'] ?? 0}',
+                                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                  ),
+                                ),
+                              ]
+                            : isSessionWiseReport
+                                ? [
+                                    // Session Wise (Academic Year) Report - Simple numbers
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
+                                      child: Text(
+                                        '${itemMap['academic_year'] ?? 'Unassigned'}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: Text(
+                                        'Borrows: ${itemMap['borrow_count'] ?? 0}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: Text(
+                                        'Requests: ${itemMap['request_count'] ?? 0}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: Text(
+                                        'Reservations: ${itemMap['reservation_count'] ?? 0}',
+                                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                      ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: Text(
+                                        'Users: ${itemMap['unique_users'] ?? 0} | Books: ${itemMap['book_count'] ?? 0}',
+                                        style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                      ),
+                                    ),
+                                  ]
+                                : itemMap.entries.take(4).map((e) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 2),
+                                      child: Text(
+                                        '${_formatKey(e.key)}: ${e.value}',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 13),
+                                      ),
+                                    );
+                                  }).toList(),
               ),
             );
           }),

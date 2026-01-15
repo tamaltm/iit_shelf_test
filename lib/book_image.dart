@@ -10,18 +10,14 @@ class BookImage extends StatelessWidget {
   final double? height;
   final BoxFit? fit;
 
-  const BookImage(
-    this.src, {
-    super.key,
-    this.width,
-    this.height,
-    this.fit,
-  });
+  const BookImage(this.src, {super.key, this.width, this.height, this.fit});
 
   bool get _isNetwork => src.startsWith('http');
 
   bool get _isFilePath {
-    return src.startsWith('/') || src.startsWith('file://') || RegExp(r'^[a-zA-Z]:\\').hasMatch(src);
+    return src.startsWith('/') ||
+        src.startsWith('file://') ||
+        RegExp(r'^[a-zA-Z]:\\').hasMatch(src);
   }
 
   String _normalizeAssetPath(String s) {
@@ -42,6 +38,19 @@ class BookImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // If src is empty, show placeholder
+    if (src.isEmpty) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.grey[800],
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Icon(Icons.book, color: Colors.white54),
+      );
+    }
+
     if (_isNetwork) {
       return Image.network(
         src,

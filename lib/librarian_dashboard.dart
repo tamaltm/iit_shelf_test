@@ -396,7 +396,7 @@ class _LibrarianDashboardPageState extends State<LibrarianDashboardPage> {
                 ),
               ),
               const SizedBox(width: 4),
-              Icon(icon, color: color, size: 20),
+              Icon(icon, color: color, size: 32),
             ],
           ),
           const SizedBox(height: 8),

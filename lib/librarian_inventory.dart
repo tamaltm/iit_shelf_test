@@ -47,7 +47,7 @@ class LibrarianInventoryPage extends StatelessWidget {
             const SizedBox(height: 20),
             _buildActionCard(
               context,
-              "Delete PDF",
+              "Delete Book/PDF",
               Icons.delete,
               Colors.red,
               () {

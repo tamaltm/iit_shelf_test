@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
-// ...existing imports...
 import 'custom_app_bar.dart';
 import 'role_bottom_nav.dart';
-import 'book_resources.dart';
 
 class TransactionHistoryPage extends StatefulWidget {
   final String? userRole;
@@ -22,95 +24,116 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   DateTime? startDate;
   DateTime? endDate;
   final TextEditingController searchController = TextEditingController();
+  
+  List<Map<String, dynamic>> transactions = [];
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> transactions = [
-    {
-      'type': 'Borrow',
-  'bookTitle': bookResources[2]['title'],
-      'userId': '12345',
-      'userName': 'John Doe',
-      'date': '2024-01-15',
-      'time': '10:30 AM',
-      'status': 'Completed',
-      'icon': Icons.book,
-      'color': Colors.blue,
-    },
-    {
-      'type': 'Return',
-      'bookTitle': 'Database Management Systems',
-      'userId': '12346',
-      'userName': 'Sarah Johnson',
-      'date': '2024-01-14',
-      'time': '02:15 PM',
-      'status': 'Completed',
-      'icon': Icons.assignment_return,
-      'color': Colors.green,
-    },
-    {
-      'type': 'Fine Payment',
-  'bookTitle': bookResources[0]['title'],
-      'userId': '23457',
-      'userName': 'Alex Smith',
-      'date': '2024-01-14',
-      'time': '11:45 AM',
-      'amount': 'BDT 50.00',
-      'status': 'Paid',
-      'icon': Icons.payment,
-      'color': Colors.orange,
-    },
-    {
-      'type': 'Reservation',
-      'bookTitle': 'Artificial Intelligence',
-      'userId': '12348',
-      'userName': 'Emily Davis',
-      'date': '2024-01-13',
-      'time': '09:20 AM',
-      'status': 'Active',
-      'icon': Icons.bookmark,
-      'color': Colors.purple,
-    },
-    {
-      'type': 'Borrow',
-      'bookTitle': 'Python for Data Science',
-      'userId': '12349',
-      'userName': 'Michael Chen',
-      'date': '2024-01-12',
-      'time': '03:30 PM',
-      'status': 'Completed',
-      'icon': Icons.book,
-      'color': Colors.blue,
-    },
-    {
-      'type': 'Return',
-      'bookTitle': 'Web Development Guide',
-      'userId': '12350',
-      'userName': 'Lisa Anderson',
-      'date': '2024-01-12',
-      'time': '01:10 PM',
-      'status': 'Completed',
-      'icon': Icons.assignment_return,
-      'color': Colors.green,
-    },
-    {
-      'type': 'Fine Payment',
-      'bookTitle': 'Operating Systems',
-      'userId': '12351',
-      'userName': 'David Wilson',
-      'date': '2024-01-11',
-      'time': '04:45 PM',
-      'amount': 'BDT 30.00',
-      'status': 'Paid',
-      'icon': Icons.payment,
-      'color': Colors.orange,
-    },
-  ];
+  String get _baseUrl {
+    if (kIsWeb) return 'http://localhost:8000';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000';
+    return 'http://localhost:8000';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      final params = {
+        'filter': selectedFilter,
+        'search': searchController.text,
+      };
+      
+      if (startDate != null) {
+        params['start_date'] = '${startDate!.year}-${startDate!.month.toString().padLeft(2, '0')}-${startDate!.day.toString().padLeft(2, '0')}';
+      }
+      
+      if (endDate != null) {
+        params['end_date'] = '${endDate!.year}-${endDate!.month.toString().padLeft(2, '0')}-${endDate!.day.toString().padLeft(2, '0')}';
+      }
+      
+      final uri = Uri.parse('$_baseUrl/librarian/get_transaction_history.php').replace(queryParameters: params);
+      final response = await http.get(uri);
+      
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success']) {
+          setState(() {
+            transactions = (data['transactions'] as List).map((t) {
+              // Add icon and color based on type
+              IconData icon;
+              Color color;
+              
+              switch (t['type']) {
+                case 'Borrow':
+                  icon = Icons.book;
+                  color = Colors.blue;
+                  break;
+                case 'Return':
+                  icon = Icons.assignment_return;
+                  color = Colors.green;
+                  break;
+                case 'Fine Payment':
+                  icon = Icons.payment;
+                  color = Colors.orange;
+                  break;
+                case 'Reservation':
+                  icon = Icons.bookmark;
+                  color = Colors.purple;
+                  break;
+                default:
+                  icon = Icons.info;
+                  color = Colors.grey;
+              }
+              
+              return {
+                'type': t['type'],
+                'bookTitle': t['book_title'] ?? 'Unknown',
+                'userId': t['user_id'] ?? '',
+                'userName': t['user_name'] ?? 'Unknown',
+                'date': t['date'] ?? '',
+                'time': t['time'] ?? '',
+                'status': t['status'] ?? '',
+                'amount': t['amount'],
+                'icon': icon,
+                'color': color,
+              };
+            }).toList();
+            _isLoading = false;
+          });
+        } else {
+          _showError('Failed to load transactions');
+        }
+      } else {
+        _showError('Failed to connect to server');
+      }
+    } catch (e) {
+      _showError('Error: $e');
+    }
+  }
+
+  void _showError(String message) {
+    setState(() => _isLoading = false);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF1A1B1E),
   appBar: CustomAppBar(userRole: widget.userRole ?? AuthService.getCurrentUserRole()),
-      body: Column(
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
         children: [
           // Search and Filter Section
           Container(
@@ -137,7 +160,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
                           ),
                         ),
                         onChanged: (value) {
-                          setState(() {});
+                          _loadTransactions();
                         },
                       ),
                     ),
@@ -217,6 +240,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           setState(() {
             selectedFilter = label;
           });
+          _loadTransactions();
         },
         backgroundColor: const Color(0xFF1A1B1E),
         selectedColor: const Color(0xFF0A84FF),
@@ -405,36 +429,8 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
   }
 
   List<Map<String, dynamic>> _getFilteredTransactions() {
-    return transactions.where((transaction) {
-      // Filter by type
-      if (selectedFilter != 'All' && transaction['type'] != selectedFilter) {
-        return false;
-      }
-      
-      // Filter by search query
-      if (searchController.text.isNotEmpty) {
-        final query = searchController.text.toLowerCase();
-        final matchesTitle = transaction['bookTitle'].toLowerCase().contains(query);
-        final matchesUserId = transaction['userId'].toLowerCase().contains(query);
-        final matchesUserName = transaction['userName'].toLowerCase().contains(query);
-        if (!matchesTitle && !matchesUserId && !matchesUserName) {
-          return false;
-        }
-      }
-      
-      // Filter by date range
-      if (startDate != null || endDate != null) {
-        final transactionDate = DateTime.parse(transaction['date']);
-        if (startDate != null && transactionDate.isBefore(startDate!)) {
-          return false;
-        }
-        if (endDate != null && transactionDate.isAfter(endDate!)) {
-          return false;
-        }
-      }
-      
-      return true;
-    }).toList();
+    // Filtering is done server-side, just return all transactions
+    return transactions;
   }
 
   Future<void> _selectDate(bool isStartDate) async {
@@ -464,6 +460,7 @@ class _TransactionHistoryPageState extends State<TransactionHistoryPage> {
           endDate = picked;
         }
       });
+      _loadTransactions();
     }
   }
 

@@ -206,6 +206,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
+        allowMultiple: false,
       );
 
       if (result != null && result.files.single.path != null) {
@@ -222,13 +223,24 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error picking PDF: $e'),
-          backgroundColor: Colors.redAccent,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              e.toString().contains('zenity')
+                  ? 'File picker not available. Please paste PDF URL below instead.'
+                  : 'Error picking PDF: $e',
+            ),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: Colors.white,
+              onPressed: () {},
+            ),
+          ),
+        );
+      }
     }
   }
 
@@ -397,7 +409,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
                     const SizedBox(height: 16),
                     Text(
                       _titleController.text.isEmpty
-                          ? "Introduction to\nQuantum Computing"
+                          ? "Enter Book Details"
                           : _titleController.text,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
@@ -468,7 +480,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
                         controller: _isbnController,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: "123512ASED",
+                          hintText: "Enter ISBN",
                           hintStyle: TextStyle(color: Colors.white54),
                           border: InputBorder.none,
                           isDense: true,
@@ -505,7 +517,7 @@ class _RequestBookDetailsPageState extends State<RequestBookDetailsPage> {
                         controller: _authorController,
                         style: const TextStyle(color: Colors.white),
                         decoration: const InputDecoration(
-                          hintText: "Robert Johnson",
+                          hintText: "Enter author name",
                           hintStyle: TextStyle(color: Colors.white54),
                           border: InputBorder.none,
                           isDense: true,

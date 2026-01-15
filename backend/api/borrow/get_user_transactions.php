@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 /**
  * Get User Transactions
  * Retrieves borrowed, returned, and reserved books for a user
@@ -30,6 +40,21 @@ if ($email === '') {
 try {
     $transactions = [];
     
+    // Get all transaction IDs that have pending return requests
+    $pendingReturnIds = [];
+    $pendingReturnStmt = $db->prepare("
+        SELECT DISTINCT n.message
+        FROM Notifications n
+        WHERE n.user_email = :email AND n.type = 'ReturnRequestPending'
+    ");
+    $pendingReturnStmt->execute([':email' => $email]);
+    
+    while ($notif = $pendingReturnStmt->fetch(PDO::FETCH_ASSOC)) {
+        if (preg_match('/Transaction\s+#(\d+)/', $notif['message'], $matches)) {
+            $pendingReturnIds[] = (int)$matches[1];
+        }
+    }
+    
     // Get borrowed and returned books from Approved_Transactions
     if ($status === 'all' || $status === 'borrowed' || $status === 'returned') {
         $statusFilter = '';
@@ -52,21 +77,32 @@ try {
                 b.title,
                 b.author,
                 b.pic_path,
-                bc.status as copy_status
+                bc.status as copy_status,
+                f.fine_id,
+                f.amount as fine_amount,
+                f.paid as fine_paid,
+                DATEDIFF(at.due_date, NOW()) as days_remaining
             FROM Approved_Transactions at
             JOIN Transaction_Requests tr ON at.request_id = tr.request_id
             JOIN Book_Copies bc ON at.copy_id = bc.copy_id
             JOIN Books b ON bc.isbn = b.isbn
+            LEFT JOIN Fines f ON at.transaction_id = f.transaction_id
             WHERE tr.requester_email = :email $statusFilter
             ORDER BY at.issue_date DESC
         ");
         $stmt->execute([':email' => $email]);
         
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            // Skip books with pending return requests (they'll appear in pending section instead)
+            if (in_array($row['transaction_id'], $pendingReturnIds)) {
+                continue;
+            }
+            
             // Check if book is overdue (borrowed and past due date)
             $isOverdue = false;
             $daysOverdue = 0;
             $actualStatus = $row['status'];
+            $daysRemaining = (int)$row['days_remaining'];
             
             if ($row['status'] === 'Borrowed' && $row['return_date'] === null) {
                 $now = new DateTime();
@@ -87,12 +123,17 @@ try {
                 'title' => $row['title'],
                 'author' => $row['author'],
                 'pic_path' => $row['pic_path'],
+                'cover' => $row['pic_path'],
                 'issue_date' => $row['issue_date'],
                 'due_date' => $row['due_date'],
                 'return_date' => $row['return_date'],
                 'status' => $actualStatus,
                 'is_overdue' => $isOverdue,
-                'days_overdue' => $daysOverdue
+                'days_overdue' => $daysOverdue,
+                'days_remaining' => $daysRemaining,
+                'fine_id' => $row['fine_id'],
+                'fine_amount' => $row['fine_amount'] ? (float)$row['fine_amount'] : 0,
+                'fine_paid' => $row['fine_paid']
             ];
         }
     }
@@ -169,6 +210,58 @@ try {
                 'is_expired' => $minutesRemaining <= 0,
                 'status' => 'Pending'
             ];
+        }
+        
+        // Get pending return requests from Notifications
+        $returnNotifStmt = $db->prepare("
+            SELECT n.user_email, n.message, n.sent_at
+            FROM Notifications n
+            WHERE n.user_email = :email AND n.type = 'ReturnRequestPending'
+            ORDER BY n.sent_at DESC
+        ");
+        $returnNotifStmt->execute([':email' => $email]);
+        
+        while ($notif = $returnNotifStmt->fetch(PDO::FETCH_ASSOC)) {
+            // Extract transaction_id from message: "Return request for Transaction #123 is pending..."
+            if (preg_match('/Transaction\s+#(\d+)/', $notif['message'], $matches)) {
+                $transactionId = (int)$matches[1];
+                
+                // Get book details for this transaction
+                $txStmt = $db->prepare("
+                    SELECT 
+                        at.transaction_id,
+                        at.copy_id,
+                        at.issue_date,
+                        at.due_date,
+                        b.isbn,
+                        b.title,
+                        b.author,
+                        b.pic_path
+                    FROM Approved_Transactions at
+                    JOIN Transaction_Requests tr ON at.request_id = tr.request_id
+                    JOIN Book_Copies bc ON at.copy_id = bc.copy_id
+                    JOIN Books b ON bc.isbn = b.isbn
+                    WHERE at.transaction_id = :tid AND at.status = 'Borrowed'
+                ");
+                $txStmt->execute([':tid' => $transactionId]);
+                $txRow = $txStmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($txRow) {
+                    $transactions[] = [
+                        'type' => 'pending_return',
+                        'transaction_id' => $txRow['transaction_id'],
+                        'isbn' => $txRow['isbn'],
+                        'title' => $txRow['title'],
+                        'author' => $txRow['author'],
+                        'pic_path' => $txRow['pic_path'],
+                        'copy_id' => $txRow['copy_id'],
+                        'issue_date' => $txRow['issue_date'],
+                        'due_date' => $txRow['due_date'],
+                        'request_date' => $notif['sent_at'],
+                        'status' => 'Pending Return'
+                    ];
+                }
+            }
         }
     }
     

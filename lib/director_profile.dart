@@ -33,6 +33,163 @@ class _DirectorProfilePageState extends State<DirectorProfilePage> {
     _loadStats();
   }
 
+  void _showResetPasswordDialog(BuildContext context, Color cardColor) {
+    final currentPasswordCtrl = TextEditingController();
+    final newPasswordCtrl = TextEditingController();
+    final confirmPasswordCtrl = TextEditingController();
+    bool _showCurrentPassword = false;
+    bool _showNewPassword = false;
+    bool _showConfirmPassword = false;
+    bool _isChanging = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: _themeService.cardBackgroundColor,
+              title: Text(
+                'Reset Password',
+                style: TextStyle(color: _themeService.textColor, fontWeight: FontWeight.bold),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: currentPasswordCtrl,
+                      obscureText: !_showCurrentPassword,
+                      style: TextStyle(color: _themeService.textColor),
+                      decoration: InputDecoration(
+                        hintText: 'Current Password',
+                        hintStyle: TextStyle(color: _themeService.secondaryTextColor),
+                        fillColor: _themeService.secondaryCardColor,
+                        filled: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showCurrentPassword ? Icons.visibility : Icons.visibility_off,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              _showCurrentPassword = !_showCurrentPassword;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: newPasswordCtrl,
+                      obscureText: !_showNewPassword,
+                      style: TextStyle(color: _themeService.textColor),
+                      decoration: InputDecoration(
+                        hintText: 'New Password',
+                        hintStyle: TextStyle(color: _themeService.secondaryTextColor),
+                        fillColor: _themeService.secondaryCardColor,
+                        filled: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showNewPassword ? Icons.visibility : Icons.visibility_off,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              _showNewPassword = !_showNewPassword;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: confirmPasswordCtrl,
+                      obscureText: !_showConfirmPassword,
+                      style: TextStyle(color: _themeService.textColor),
+                      decoration: InputDecoration(
+                        hintText: 'Confirm New Password',
+                        hintStyle: TextStyle(color: _themeService.secondaryTextColor),
+                        fillColor: _themeService.secondaryCardColor,
+                        filled: true,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _showConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () {
+                            setDialogState(() {
+                              _showConfirmPassword = !_showConfirmPassword;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: _isChanging ? null : () { Navigator.of(context).pop(); },
+                  child: Text('Cancel', style: TextStyle(color: _themeService.textColor)),
+                ),
+                ElevatedButton(
+                  onPressed: _isChanging ? null : () async {
+                    final currentPass = currentPasswordCtrl.text.trim();
+                    final newPass = newPasswordCtrl.text.trim();
+                    final confirmPass = confirmPasswordCtrl.text.trim();
+                    if (currentPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('All fields are required'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+                    if (newPass != confirmPass) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Passwords do not match'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+                    if (newPass.length < 6) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Password must be at least 6 characters'), backgroundColor: Colors.red),
+                      );
+                      return;
+                    }
+                    setDialogState(() { _isChanging = true; });
+                    final email = AuthService.getCurrentUserEmail();
+                    if (email != null) {
+                      final result = await AuthService.changePassword(
+                        email: email,
+                        currentPassword: currentPass,
+                        newPassword: newPass,
+                        confirmPassword: confirmPass,
+                      );
+                      if (mounted) {
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(result.message),
+                            backgroundColor: result.ok ? Colors.green : Colors.red,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                  child: _isChanging ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white))) : const Text('Change Password'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
   Future<void> _loadProfile() async {
     final email = AuthService.getCurrentUserEmail();
     if (email != null) {
@@ -284,24 +441,13 @@ class _DirectorProfilePageState extends State<DirectorProfilePage> {
               },
               cardColor: cardColor,
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () async {
-                  // Clear session and navigate to login
-                  await AuthService.logout();
-                  if (mounted) {
-                    Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-                  }
-                },
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red, width: 1.5),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                child: const Text("Logout",
-                    style: TextStyle(color: Colors.red, fontSize: 16)),
-              ),
+            ProfileMenuItem(
+              icon: Icons.lock,
+              title: "Reset Password",
+              onTap: () {
+                _showResetPasswordDialog(context, cardColor);
+              },
+              cardColor: cardColor,
             ),
           ],
         ),

@@ -24,6 +24,9 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
   List<Map<String, dynamic>> _reserveRequests = [];
   List<Map<String, dynamic>> _additionRequests = [];
 
+  // Track optional damage fines/conditions keyed by transaction id
+  final Map<int, Map<String, dynamic>> _damageNotes = {};
+
   bool _approvingBorrow = false;
 
   bool _loading = true;
@@ -139,17 +142,142 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
     }
   }
 
-  Future<void> _approveReturn(int transactionId) async {
-    final res = await BookService.returnBook(transactionId: transactionId);
+  Future<void> _rejectBorrowRequest(int requestId) async {
+    final uri = Uri.parse('$_baseUrl/librarian/reject_borrow_request.php');
+    final resp = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: json.encode({'request_id': requestId}),
+    );
+    final decoded = json.decode(resp.body);
+    if (resp.statusCode >= 200 &&
+        resp.statusCode < 300 &&
+        decoded['success'] == true) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Request rejected')),
+      );
+      await _loadAll();
+    } else {
+      throw decoded['message'] ?? 'Failed to reject';
+    }
+  }
+
+  Future<void> _approveReturn(
+    int transactionId, {
+    double? damageFine,
+    String? bookCondition,
+  }) async {
+    final res = await BookService.returnBook(
+      transactionId: transactionId,
+      damageFine: damageFine,
+      bookCondition: bookCondition,
+    );
     if (!mounted) return;
     if (res.ok) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Return approved')));
       await _loadAll();
+      setState(() {
+        _damageNotes.remove(transactionId);
+      });
     } else {
       throw res.message;
     }
+  }
+
+  Future<void> _promptDamageFine(int transactionId) async {
+    final existing = _damageNotes[transactionId];
+    final controller = TextEditingController(
+      text: existing != null ? (existing['fine']?.toString() ?? '') : '',
+    );
+    String condition = existing != null
+        ? (existing['condition']?.toString() ?? 'damaged')
+        : 'damaged';
+
+    final result = await showDialog<Map<String, dynamic>?>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF2C2D35),
+          title: const Text(
+            'Damage / Lost Fine',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Fine amount (BDT)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  hintText: 'e.g. 150',
+                  hintStyle: TextStyle(color: Colors.white54),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: condition,
+                dropdownColor: const Color(0xFF2C2D35),
+                decoration: const InputDecoration(
+                  labelText: 'Book condition',
+                  labelStyle: TextStyle(color: Colors.white70),
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'damaged',
+                    child: Text('Damaged', style: TextStyle(color: Colors.white)),
+                  ),
+                  DropdownMenuItem(
+                    value: 'discarded',
+                    child:
+                        Text('Discarded', style: TextStyle(color: Colors.white)),
+                  ),
+                  DropdownMenuItem(
+                    value: 'lost',
+                    child: Text('Lost', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+                onChanged: (v) {
+                  condition = v ?? 'damaged';
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final amt = double.tryParse(controller.text.trim());
+                if (amt == null || amt < 0) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(
+                      content: Text('Enter a valid non-negative amount'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.of(ctx).pop({'fine': amt, 'condition': condition});
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted || result == null) return;
+    setState(() {
+      _damageNotes[transactionId] = result;
+    });
   }
 
   @override
@@ -273,6 +401,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
             expirationText: expirationText,
             isExpired: isExpired,
             onApprove: () => _promptCopySelection(r),
+            onReject: () => _rejectBorrowRequestWithConfirmation(int.tryParse(r['request_id']?.toString() ?? '0') ?? 0),
           ),
         );
       },
@@ -391,6 +520,39 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
     }
   }
 
+  Future<void> _rejectBorrowRequestWithConfirmation(int requestId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reject Request'),
+          content: const Text('Are you sure you want to reject this borrow request?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Reject'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+
+    if (confirmed) {
+      try {
+        await _rejectBorrowRequest(requestId);
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not reject: $e')),
+        );
+      }
+    }
+  }
+
   Widget _buildReturnTab() {
     if (_returnRequests.isEmpty) {
       return const Center(
@@ -411,6 +573,11 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
                 : int.tryParse(r['days_overdue']?.toString() ?? '0')) ??
             0;
         final fineTk = (fine * 5).toStringAsFixed(2);
+        final txnId = int.parse(r['transaction_id'].toString());
+        final damage = _damageNotes[txnId];
+        final damageLabel = damage == null
+            ? 'Damaged Fine (If any)'
+            : 'Damage: BDT ${damage['fine']} (${damage['condition']})';
         return Padding(
           padding: const EdgeInsets.only(bottom: 12),
           child: _buildReturnRequestCard(
@@ -421,8 +588,15 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
             r['isbn'] ?? '',
             'BDT $fineTk',
             _timeAgo(r['due_date']),
-            onApprove: () =>
-                _approveReturn(int.parse(r['transaction_id'].toString())),
+            damageLabel: damageLabel,
+            onSetDamage: () => _promptDamageFine(txnId),
+            onApprove: () => _approveReturn(
+              txnId,
+              damageFine:
+                  damage != null ? (damage['fine'] as double? ?? 0.0) : null,
+              bookCondition:
+                  damage != null ? damage['condition']?.toString() : null,
+            ),
           ),
         );
       },
@@ -500,6 +674,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
     String? expirationText,
     bool isExpired = false,
     VoidCallback? onApprove,
+    VoidCallback? onReject,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -579,26 +754,50 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: onApprove,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0A84FF),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: onApprove,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0A84FF),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    "Approve",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
               ),
-              child: const Text(
-                "Approve",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 15,
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: onReject,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    "Reject",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       ),
@@ -613,6 +812,8 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
     String isbn,
     String fine,
     String time, {
+    String damageLabel = 'Damaged Fine (If any)',
+    VoidCallback? onSetDamage,
     VoidCallback? onApprove,
   }) {
     return Container(
@@ -685,7 +886,7 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {},
+                  onPressed: onSetDamage,
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.white54),
                     padding: const EdgeInsets.symmetric(vertical: 14),
@@ -693,9 +894,9 @@ class _LibrarianRequestsPageState extends State<LibrarianRequestsPage>
                       borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  child: const Text(
-                    "Damaged Fine (If any)",
-                    style: TextStyle(color: Colors.white, fontSize: 13),
+                  child: Text(
+                    damageLabel,
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
               ),

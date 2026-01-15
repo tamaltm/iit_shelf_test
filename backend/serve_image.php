@@ -4,6 +4,17 @@
  * Usage: /serve_image.php?path=uploads/profiles/filename.jpg
  */
 
+// CORS headers
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// Handle preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 $path = isset($_GET['path']) ? $_GET['path'] : '';
 
 if (empty($path)) {

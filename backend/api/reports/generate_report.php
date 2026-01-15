@@ -189,6 +189,7 @@ function generateSemesterWiseReport($pdo, $startDate, $endDate) {
     $sql = "SELECT 
                 COALESCE(c.semester, 'Unassigned') AS semester,
                 COUNT(DISTINCT at.transaction_id) AS borrow_count,
+                COUNT(DISTINCT tr.request_id) AS request_count,
                 COUNT(DISTINCT tr.requester_email) AS unique_borrowers,
                 COUNT(DISTINCT b.isbn) AS book_count
             FROM Approved_Transactions at
@@ -204,7 +205,11 @@ function generateSemesterWiseReport($pdo, $startDate, $endDate) {
     }
 
     $sql .= " GROUP BY semester
-              ORDER BY borrow_count DESC";
+              ORDER BY 
+                CASE 
+                    WHEN semester = 'Unassigned' THEN 999
+                    ELSE CAST(semester AS UNSIGNED)
+                END ASC";
 
     $stmt = $pdo->prepare($sql);
 
@@ -219,29 +224,47 @@ function generateSemesterWiseReport($pdo, $startDate, $endDate) {
 }
 
 function generateSessionWiseReport($pdo, $startDate, $endDate) {
+    // Session-wise report aggregates semesters by academic year
+    // Year 1: semesters 11 + 12
+    // Year 2: semesters 21 + 22
+    // Year 3: semesters 31 + 32
+    // Year 4: semesters 41 + 42
+    
     $sql = "SELECT 
-                COALESCE(s.session, 'Unassigned') AS session,
+                CASE 
+                    WHEN FLOOR(CAST(c.semester AS UNSIGNED) / 10) = 1 THEN 'Year 1'
+                    WHEN FLOOR(CAST(c.semester AS UNSIGNED) / 10) = 2 THEN 'Year 2'
+                    WHEN FLOOR(CAST(c.semester AS UNSIGNED) / 10) = 3 THEN 'Year 3'
+                    WHEN FLOOR(CAST(c.semester AS UNSIGNED) / 10) = 4 THEN 'Year 4'
+                    ELSE 'Unassigned'
+                END AS academic_year,
                 COUNT(DISTINCT at.transaction_id) AS borrow_count,
                 COUNT(DISTINCT tr.request_id) AS request_count,
                 COUNT(DISTINCT r.reservation_id) AS reservation_count,
-                COUNT(DISTINCT tr.requester_email) AS unique_users
-            FROM Users u
-            LEFT JOIN Students s ON u.email = s.email
-            LEFT JOIN Transaction_Requests tr ON u.email = tr.requester_email
-            LEFT JOIN Approved_Transactions at ON tr.request_id = at.request_id
-            LEFT JOIN Reservations r ON u.email = r.user_email
-            WHERE u.role = 'Student'";
+                COUNT(DISTINCT tr.requester_email) AS unique_users,
+                COUNT(DISTINCT b.isbn) AS book_count
+            FROM Approved_Transactions at
+            JOIN Transaction_Requests tr ON at.request_id = tr.request_id
+            JOIN Book_Copies bc ON at.copy_id = bc.copy_id
+            JOIN Books b ON bc.isbn = b.isbn
+            LEFT JOIN Book_Courses bcs ON b.isbn = bcs.isbn
+            LEFT JOIN Courses c ON bcs.course_id = c.course_id
+            LEFT JOIN Reservations r ON tr.requester_email = r.user_email
+            WHERE 1=1";
 
     if ($startDate && $endDate) {
-        $sql .= " AND (
-                    (at.issue_date BETWEEN :start_date AND :end_date)
-                    OR (DATE(tr.request_date) BETWEEN :start_date AND :end_date)
-                    OR (DATE(r.created_at) BETWEEN :start_date AND :end_date)
-                )";
+        $sql .= " AND at.issue_date BETWEEN :start_date AND :end_date";
     }
 
-    $sql .= " GROUP BY session
-              ORDER BY borrow_count DESC, request_count DESC";
+    $sql .= " GROUP BY academic_year
+              ORDER BY 
+                CASE 
+                    WHEN academic_year = 'Year 1' THEN 1
+                    WHEN academic_year = 'Year 2' THEN 2
+                    WHEN academic_year = 'Year 3' THEN 3
+                    WHEN academic_year = 'Year 4' THEN 4
+                    ELSE 5
+                END ASC";
 
     $stmt = $pdo->prepare($sql);
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import 'book_service.dart';
 import 'course_service.dart';
@@ -34,7 +36,7 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
 
   bool _isSubmitting = false;
   String? _selectedImagePath;
-  String? _selectedCourse;
+  List<String> _selectedCourses = []; // Changed to list for multi-select
   List<Course> _courses = [];
   bool _coursesLoading = true;
   String? _coursesError;
@@ -43,6 +45,8 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
   bool _shelfLocationsLoading = true;
   final List<ShelfLocation?> _copyLocations = [];
   int _currentCopyCount = 0;
+  List<BookCopy> _existingCopies = [];
+  bool _existingCopiesLoading = true;
 
   @override
   void initState() {
@@ -58,7 +62,7 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
     );
     _editionController = TextEditingController(text: b.edition ?? '');
     _descriptionController = TextEditingController(text: b.description ?? '');
-    _copiesTotalController = TextEditingController();
+    _copiesTotalController = TextEditingController(text: '0'); // Start with 0 for new copies
     _shelfIdController = TextEditingController();
     _compartmentNoController = TextEditingController();
     _subcompartmentNoController = TextEditingController();
@@ -67,6 +71,17 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
     _copiesTotalController.addListener(_handleCopiesTotalChange);
     _loadCourses();
     _loadShelfLocations();
+    _loadExistingCopies();
+    _loadBookCourses(); // Fetch existing courses for this book
+
+    // Pre-fill PDF URL
+    if (b.pdfUrl != null && b.pdfUrl!.isNotEmpty) {
+      _pdfUrlController.text = b.pdfUrl!;
+    }
+    
+    // Initialize current copy count for NEW copies only (start at 0)
+    _currentCopyCount = 0;
+    _syncCopyControllers(0);
   }
 
   @override
@@ -117,6 +132,50 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
     }
   }
 
+  Future<void> _loadExistingCopies() async {
+    setState(() {
+      _existingCopiesLoading = true;
+    });
+    try {
+      final copies = await BookService.fetchBookCopies(widget.book.isbn ?? '');
+      if (mounted) {
+        setState(() {
+          _existingCopies = copies;
+          _existingCopiesLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _existingCopies = [];
+          _existingCopiesLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadBookCourses() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${BookService.getBaseUrl()}/api/books/get_book_courses.php?isbn=${Uri.encodeComponent(widget.book.isbn ?? "")}'),
+      );
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true && data['courses'] != null) {
+          final List<dynamic> coursesData = data['courses'];
+          if (mounted) {
+            setState(() {
+              _selectedCourses = coursesData.map((c) => c['course_id'].toString()).toList();
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Silently fail - just leave _selectedCourses empty
+      debugPrint('Error fetching book courses: $e');
+    }
+  }
+
   Future<void> _submit() async {
     if (_titleController.text.isEmpty ||
         _isbnController.text.isEmpty ||
@@ -134,22 +193,58 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
       return;
     }
 
-    if (_selectedCourse == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please select a course.')));
-      return;
-    }
-
     setState(() {
       _isSubmitting = true;
     });
+
+    // Validate that all copy IDs are filled if copies exist
+    if (_currentCopyCount > 0) {
+      for (int i = 0; i < _copyIdControllers.length; i++) {
+        if (_copyIdControllers[i].text.trim().isEmpty) {
+          setState(() {
+            _isSubmitting = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Copy ${i + 1}: Copy ID is required'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+          return;
+        }
+      }
+    }
+
+    // Prepare copy IDs and locations (combine existing + new)
+    final List<String> allCopyIds = [
+      ..._existingCopies.map((c) => c.copyId),
+      ..._copyIdControllers.map((controller) => controller.text.trim()),
+    ];
+    
+    final List<Map<String, dynamic>> allCopyLocations = [
+      // Existing copies keep their locations and condition notes
+      ..._existingCopies.map((c) => {
+        'shelf_id': c.shelfId,
+        'compartment_no': c.compartmentNo,
+        'subcompartment_no': c.subcompartmentNo,
+        'condition_note': c.conditionNote,
+      }),
+      // New copies with selected locations and condition note
+      ..._copyLocations.asMap().entries.map((e) => {
+        'shelf_id': e.value?.shelfId,
+        'compartment_no': e.value?.compartmentNo,
+        'subcompartment_no': e.value?.subcompartmentNo,
+        'condition_note': _conditionNoteController.text.trim().isEmpty
+            ? null
+            : _conditionNoteController.text.trim(),
+      }),
+    ];
 
     final payload = BookPayload(
       title: _titleController.text.trim(),
       author: _authorController.text.trim(),
       isbn: _isbnController.text.trim(),
-      courseId: _selectedCourse,
+      courseIds: _selectedCourses.where((c) => c.isNotEmpty && c != 'NONE').toList(),
       category: _categoryController.text.trim().isEmpty
           ? null
           : _categoryController.text.trim(),
@@ -164,7 +259,16 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
           : _editionController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
           ? null
-          : _descriptionController.text.trim(),
+        : _descriptionController.text.trim(),
+      pdfUrl: _pdfUrlController.text.trim().isEmpty
+        ? null
+        : _pdfUrlController.text.trim(),
+      copiesTotal: allCopyIds.isNotEmpty ? allCopyIds.length : null,
+      copyIds: allCopyIds.isNotEmpty ? allCopyIds : null,
+      copyLocations: allCopyLocations.isNotEmpty ? allCopyLocations : null,
+      conditionNote: _conditionNoteController.text.trim().isEmpty
+          ? null
+          : _conditionNoteController.text.trim(),
     );
 
     final result = await BookService.updateBook(
@@ -266,7 +370,7 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
       setState(() {
         _coursesLoading = false;
         _coursesError = 'Could not load courses. Tap to retry.';
-        _selectedCourse = null;
+        _selectedCourses = [];
       });
       return;
     }
@@ -274,7 +378,7 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
     setState(() {
       _courses = fetched;
       _coursesLoading = false;
-      _selectedCourse = widget.book.courseId ?? fetched.first.id;
+      // Don't pre-select any - will be loaded from _loadBookCourses
     });
   }
 
@@ -380,8 +484,6 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
             _buildCourseDropdown(),
             const SizedBox(height: 16),
 
-            _buildInfoField("Book ISBN:", _isbnController),
-            const SizedBox(height: 16),
             _buildInfoField("Author:", _authorController),
             const SizedBox(height: 16),
             _buildInfoField("Category (optional):", _categoryController),
@@ -394,14 +496,101 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
               keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 16),
-            _buildInfoField("Edition (optional):", _editionController),
-            const SizedBox(height: 16),
-            _buildInfoField(
-              "Number of Physical Copies:",
-              _copiesTotalController,
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
+            // Existing Physical Copies
+            if (_existingCopies.isNotEmpty)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2C2D35),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Existing Physical Copies (${_existingCopies.length})',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ..._existingCopies.asMap().entries.map((e) {
+                      final copy = e.value;
+                      final index = e.key;
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: index == _existingCopies.length - 1 ? 0 : 12,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1F2029),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: Colors.white10,
+                              width: 1,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Copy ${index + 1} - ${copy.copyId}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                'Status: ${copy.status}',
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11,
+                                ),
+                              ),
+                              if (copy.shelfId != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Location: Shelf ${copy.shelfId}' +
+                                        (copy.compartmentNo != null
+                                            ? ' - Comp ${copy.compartmentNo}'
+                                            : '') +
+                                        (copy.subcompartmentNo != null
+                                            ? ' - Sub ${copy.subcompartmentNo}'
+                                            : ''),
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              if (copy.conditionNote != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    'Condition: ${copy.conditionNote}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            if (_existingCopies.isNotEmpty) const SizedBox(height: 16),
+
+            // Add New Physical Copies
             if (_currentCopyCount > 0) ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -412,16 +601,38 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        'Copy IDs and Shelf Locations',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Add New Physical Copies',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _currentCopyCount++;
+                              _syncCopyControllers(_currentCopyCount);
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              '➕',
+                              style: TextStyle(fontSize: 14),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 12),
                     ...List.generate(_currentCopyCount, (index) {
                       return Padding(
                         padding: EdgeInsets.only(
@@ -430,13 +641,37 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              'Copy ${index + 1}',
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'New Copy ${index + 1}',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _copyIdControllers[index].dispose();
+                                      _copyIdControllers.removeAt(index);
+                                      if (index < _copyLocations.length) {
+                                        _copyLocations.removeAt(index);
+                                      }
+                                      _currentCopyCount--;
+                                    });
+                                  },
+                                  child: const Text(
+                                    '✕',
+                                    style: TextStyle(
+                                      color: Colors.red,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 8),
                             _buildInfoField(
@@ -450,6 +685,26 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
                       );
                     }),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ] else ...[
+              // Show add first copy button
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _currentCopyCount = 1;
+                    _syncCopyControllers(1);
+                  });
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Add Physical Copy'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 12,
+                    horizontal: 16,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -592,31 +847,36 @@ class _EditBookDetailPageState extends State<EditBookDetailPage> {
         ),
       );
     } else {
-      child = DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: _selectedCourse,
-          dropdownColor: const Color(0xFF2C2D35),
-          isExpanded: true,
-          iconEnabledColor: Colors.white,
-          style: const TextStyle(color: Colors.white),
-          items: [
-            const DropdownMenuItem(value: 'NONE', child: Text('None')),
-            ..._courses
-                .map(
-                  (c) => DropdownMenuItem(
-                    value: c.id,
-                    child: Text(
-                      c.id.isNotEmpty ? '${c.id} — ${c.name}' : c.name,
-                    ),
-                  ),
-                )
-                .toList(),
-          ],
-          onChanged: (value) {
-            setState(() {
-              _selectedCourse = value;
-            });
-          },
+      child = SizedBox(
+        height: 250, // Fixed height for scrollable area
+        child: SingleChildScrollView(
+          child: Column(
+            children: _courses.map((course) {
+              final isSelected = _selectedCourses.contains(course.id);
+              return CheckboxListTile(
+                value: isSelected,
+                title: Text(
+                  course.id.isNotEmpty ? '${course.id} — ${course.name}' : course.name,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  course.semester ?? '',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                ),
+                activeColor: Colors.blueAccent,
+                checkColor: Colors.white,
+                onChanged: (bool? checked) {
+                  setState(() {
+                    if (checked == true) {
+                      _selectedCourses.add(course.id);
+                    } else {
+                      _selectedCourses.remove(course.id);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
         ),
       );
     }

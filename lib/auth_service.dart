@@ -259,6 +259,21 @@ class AuthService {
     return res.ok;
   }
 
+  static Future<AuthResult> changePassword({
+    required String email,
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    final res = await _post('change_password', {
+      'email': _norm(email),
+      'current_password': currentPassword,
+      'new_password': newPassword,
+      'confirm_password': confirmPassword,
+    });
+    return result(ok: res.ok, message: res.message);
+  }
+
   // ------------------ Helpers ------------------
 
   static String getDefaultRouteForRole(String role) {
@@ -313,7 +328,10 @@ class AuthService {
       final message = decoded['message'] as String? ?? 'Upload failed';
 
       if (success) {
-        _profile['profile_image'] = decoded['image_url'];
+        final url = decoded['image_url'] as String?;
+        if (url != null && url.isNotEmpty) {
+          _profile['profile_image'] = _absolutizeUrl(url);
+        }
       }
 
       return result(ok: success, message: message);
@@ -349,6 +367,11 @@ class AuthService {
 
     if (apiResult.ok && apiResult.data['user'] is Map) {
       final userData = apiResult.data['user'] as Map<String, dynamic>;
+      // Ensure profile_image is an absolute URL usable across platforms
+      final img = userData['profile_image'];
+      if (img is String && img.isNotEmpty) {
+        userData['profile_image'] = _absolutizeUrl(img);
+      }
       _profile.addAll(userData);
       return result(ok: true, message: 'Profile loaded');
     }
@@ -380,6 +403,39 @@ class AuthService {
     } catch (e) {
       return _ApiResult(ok: false, message: 'Network error: $e', data: {});
     }
+  }
+
+  /// Convert relative or mismatched URLs to absolute URLs using _baseHost
+  static String _absolutizeUrl(String url) {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty) return trimmed;
+    // If absolute but pointing to localhost, swap to _baseHost for devices
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      try {
+        final uri = Uri.parse(trimmed);
+        if (uri.host == 'localhost' || uri.host == '127.0.0.1') {
+          // Preserve path/query while replacing host (and port if present)
+          final base = Uri.parse(_baseHost);
+          final rebuilt = Uri(
+            scheme: base.scheme,
+            host: base.host,
+            port: base.port,
+            path: uri.path,
+            query: uri.query,
+          );
+          return rebuilt.toString();
+        }
+        return trimmed;
+      } catch (_) {
+        // Fall through to relative handling
+      }
+    }
+    // Starts with / -> join with host directly
+    if (trimmed.startsWith('/')) {
+      return '$_baseHost$trimmed';
+    }
+    // Common backend path variants like 'auth/get_image.php?...'
+    return '$_baseHost/$trimmed';
   }
 }
 

@@ -15,6 +15,7 @@ $database = new Database();
 $db = $database->getConnection();
 
 try {
+    // Get categories
     $sql = "SELECT DISTINCT category 
             FROM Books 
             WHERE category IS NOT NULL 
@@ -30,9 +31,24 @@ try {
         $categories[] = $row['category'];
     }
     
+    // Get semesters
+    $semesterSql = "SELECT DISTINCT semester 
+                    FROM Courses 
+                    WHERE semester IS NOT NULL 
+                    ORDER BY semester";
+    
+    $semesterStmt = $db->prepare($semesterSql);
+    $semesterStmt->execute();
+    
+    $semesters = [];
+    while ($row = $semesterStmt->fetch(PDO::FETCH_ASSOC)) {
+        $semesters[] = $row['semester'];
+    }
+    
     echo json_encode([
         'success' => true,
-        'categories' => $categories
+        'categories' => $categories,
+        'semesters' => $semesters
     ]);
     
 } catch (PDOException $e) {
@@ -40,7 +56,8 @@ try {
     echo json_encode([
         'success' => false,
         'message' => 'Database error',
-        'categories' => []
+        'categories' => [],
+        'semesters' => []
     ]);
 }
 

@@ -33,16 +33,38 @@ class _RegisterPageState extends State<RegisterPage> {
   int _resendSeconds = 0;
   Timer? _timer;
 
+  bool _isValidPassword(String password) {
+    // Requirements: at least 8 chars, 1 capital, 1 number, 1 symbol
+    if (password.length < 8) return false;
+    if (!password.contains(RegExp(r'[A-Z]'))) return false; // Capital letter
+    if (!password.contains(RegExp(r'[0-9]'))) return false; // Number
+    // Symbol check: common symbols for password
+    if (!password.contains(RegExp(r'[!@#$%^&*()_+\-=\[\]{}:";,.<>?/\\|`~]')))
+      return false;
+    return true;
+  }
+
   void _checkPasswordStrength(String value) {
     setState(() {
-      if (value.length < 6) {
-        passwordStrength = 0.2;
-        passwordError = "Too short";
-      } else if (value.length < 10) {
-        passwordStrength = 0.5;
+      if (value.isEmpty) {
+        passwordStrength = 0;
         passwordError = "";
-      } else {
+      } else if (value.length < 8) {
+        passwordStrength = 0.2;
+        passwordError = "Minimum 8 characters required";
+      } else if (!value.contains(RegExp(r'[A-Z]'))) {
+        passwordStrength = 0.4;
+        passwordError = "Add at least one capital letter";
+      } else if (!value.contains(RegExp(r'[0-9]'))) {
+        passwordStrength = 0.6;
+        passwordError = "Add at least one number";
+      } else if (!value.contains(
+        RegExp(r'[!@#$%^&*()_+\-=\[\]{}:";,.<>?/\\|`~]'),
+      )) {
         passwordStrength = 0.8;
+        passwordError = "Add at least one symbol (!@#\$%^&*)";
+      } else {
+        passwordStrength = 1.0;
         passwordError = "";
       }
     });
@@ -74,6 +96,13 @@ class _RegisterPageState extends State<RegisterPage> {
     final confirm = _confirmController.text;
     if (pass.isEmpty || confirm.isEmpty) {
       setState(() => _message = 'Please enter and confirm your password');
+      return false;
+    }
+    if (!_isValidPassword(pass)) {
+      setState(
+        () => _message =
+            'Password must have: 8+ chars, 1 capital, 1 number, 1 symbol',
+      );
       return false;
     }
     if (pass != confirm) {
@@ -109,9 +138,7 @@ class _RegisterPageState extends State<RegisterPage> {
       _otpVerified = false;
     });
     await Future.delayed(const Duration(milliseconds: 200));
-    final res = await AuthService.sendRegisterOtp(
-      _emailController.text.trim(),
-    );
+    final res = await AuthService.sendRegisterOtp(_emailController.text.trim());
     setState(() {
       _isSending = false;
       _otpSent = res.ok;
@@ -137,7 +164,10 @@ class _RegisterPageState extends State<RegisterPage> {
       _message = null;
     });
     await Future.delayed(const Duration(milliseconds: 200));
-    final res = await AuthService.verifyEmailOtp(_emailController.text.trim(), otp);
+    final res = await AuthService.verifyEmailOtp(
+      _emailController.text.trim(),
+      otp,
+    );
     setState(() {
       _isVerifying = false;
       _otpVerified = res.ok;
@@ -178,7 +208,9 @@ class _RegisterPageState extends State<RegisterPage> {
         context: context,
         builder: (c) => AlertDialog(
           title: const Text('Account Ready'),
-          content: const Text('Password set successfully. You can now sign in.'),
+          content: const Text(
+            'Password set successfully. You can now sign in.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(c).pop(),
@@ -495,13 +527,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: (_isSending || _isVerifying || _isSettingPassword)
+                    onPressed:
+                        (_isSending || _isVerifying || _isSettingPassword)
                         ? null
                         : !_otpSent
-                            ? _sendOtp
-                            : !_otpVerified
-                                ? _verifyOtp
-                                : _setPassword,
+                        ? _sendOtp
+                        : !_otpVerified
+                        ? _verifyOtp
+                        : _setPassword,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -519,8 +552,8 @@ class _RegisterPageState extends State<RegisterPage> {
                             !_otpSent
                                 ? 'Send OTP'
                                 : !_otpVerified
-                                    ? 'Verify OTP'
-                                    : 'Set Password & Create Account',
+                                ? 'Verify OTP'
+                                : 'Set Password & Create Account',
                           ),
                   ),
                 ),

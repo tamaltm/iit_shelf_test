@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 include_once '../../config/database.php';
 include_once '../lib/reservation_helpers.php';
 include_once '../lib/notification_helpers.php';
@@ -10,6 +20,10 @@ $data = json_decode(file_get_contents('php://input'));
 
 $transactionId = $data->transaction_id ?? null;
 $copyId = $data->copy_id ?? null;
+$damageFine = isset($data->damage_fine) ? floatval($data->damage_fine) : 0;
+$bookCondition = isset($data->book_condition)
+    ? strtolower(trim($data->book_condition))
+    : '';
 
 if (empty($transactionId) && empty($copyId)) {
     http_response_code(400);
@@ -63,15 +77,22 @@ try {
     $close = $db->prepare('UPDATE Approved_Transactions SET status = "Returned", return_date = NOW() WHERE transaction_id = :tid');
     $close->execute([':tid' => $txn['transaction_id']]);
 
-    // Update copy status
-    $copyUpdate = $db->prepare('UPDATE Book_Copies SET status = "Available" WHERE copy_id = :cid');
-    $copyUpdate->execute([':cid' => $txn['copy_id']]);
+    // Update copy status/condition based on submitted condition
+    $statusForCopy = 'Available';
+    if ($bookCondition === 'lost') {
+        $statusForCopy = 'Lost';
+    } elseif ($bookCondition === 'discarded') {
+        $statusForCopy = 'Discarded';
+    }
 
-    // Mark return request as processed if it exists
-    $updateReturnRequest = $db->prepare('UPDATE Return_Requests 
-        SET status = "Processed", processed_at = NOW() 
-        WHERE transaction_id = :tid AND status = "Pending"');
-    $updateReturnRequest->execute([':tid' => $txn['transaction_id']]);
+    $copyUpdate = $db->prepare('UPDATE Book_Copies SET status = :status, condition_note = :note WHERE copy_id = :cid');
+    $copyUpdate->execute([
+        ':status' => $statusForCopy,
+        ':note' => $bookCondition ? ucfirst($bookCondition) : null,
+        ':cid' => $txn['copy_id'],
+    ]);
+
+    // No Return_Requests table used; processing proceeds without updating auxiliary tables.
 
     // Get ISBN and book title for notifications and reservation handling
     $bookStmt = $db->prepare('SELECT bc.isbn, b.title FROM Book_Copies bc JOIN Books b ON bc.isbn = b.isbn WHERE bc.copy_id = :cid');
@@ -110,6 +131,26 @@ try {
         $fineId = $db->lastInsertId();
     }
 
+    // Record damage/lost fine if provided
+    $damageFineId = null;
+    if ($damageFine > 0) {
+        $label = in_array($bookCondition, ['damaged', 'discarded', 'lost'])
+            ? ucfirst($bookCondition)
+            : 'Damaged';
+        $fineInsert = $db->prepare('INSERT INTO Fines (
+            transaction_id, user_email, amount, description, paid
+        ) VALUES (
+            :transaction_id, :user_email, :amount, :description, 0
+        )');
+        $fineInsert->execute([
+            ':transaction_id' => $txn['transaction_id'],
+            ':user_email' => $txn['requester_email'],
+            ':amount' => $damageFine,
+            ':description' => "$label fine",
+        ]);
+        $damageFineId = $db->lastInsertId();
+    }
+
     $db->commit();
 
     http_response_code(200);
@@ -118,6 +159,8 @@ try {
         'message' => 'Book returned successfully',
         'fine' => $fineAmount,
         'fine_id' => $fineId,
+        'damage_fine' => $damageFine,
+        'damage_fine_id' => $damageFineId,
     ]);
 } catch (Exception $e) {
     $db->rollBack();

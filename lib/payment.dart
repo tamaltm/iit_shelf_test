@@ -33,55 +33,9 @@ class _PaymentPageState extends State<PaymentPage> {
   Future<void> _processPayment(Fine fine) async {
     if (fine.fines.isEmpty && fine.pendingFines.isEmpty) return;
 
-    // Show payment method selection dialog
-    final paymentMethod = await showDialog<String>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2C2D35),
-          title: const Text(
-            'Select Payment Method',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(
-                  Icons.account_balance_wallet,
-                  color: Colors.blue,
-                ),
-                title: const Text(
-                  'bKash',
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: Text(
-                  'Pay via bKash mobile wallet',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                onTap: () => Navigator.pop(context, 'bkash'),
-              ),
-              const Divider(color: Colors.white24),
-              ListTile(
-                leading: const Icon(Icons.payment, color: Colors.green),
-                title: const Text(
-                  'Cash',
-                  style: TextStyle(color: Colors.white),
-                ),
-                subtitle: Text(
-                  'Pay with cash at library',
-                  style: TextStyle(color: Colors.white70, fontSize: 12),
-                ),
-                onTap: () => Navigator.pop(context, 'cash'),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (paymentMethod == null) return;
-
+    // Auto-select bKash (only payment method)
+    const paymentMethod = 'bkash';
+    
     if (paymentMethod == 'bkash') {
       // Show bKash payment info dialog
       final confirmed = await showDialog<bool>(

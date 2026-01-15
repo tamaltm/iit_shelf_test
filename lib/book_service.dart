@@ -13,6 +13,9 @@ class BookService {
     return 'http://localhost:8000';
   }
 
+  // Public getter for base URL
+  static String getBaseUrl() => _baseUrl;
+
   static String _absolutePath(String? path) {
     if (path == null || path.isEmpty) return '';
     if (path.startsWith('http')) return path;
@@ -115,6 +118,25 @@ class BookService {
   }) async {
     final body = payload.toJson()..['isbn'] = isbn;
     return _post('books/update_book.php', body);
+  }
+
+  static Future<List<BookCopy>> fetchBookCopies(String isbn) async {
+    final uri = Uri.parse('$_baseUrl/books/get_book_copies.php?isbn=$isbn');
+    try {
+      final resp = await http.get(uri);
+      if (resp.statusCode == 200) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        if (decoded['success'] == true) {
+          final copiesList = decoded['copies'] as List<dynamic>? ?? [];
+          return copiesList
+              .map((c) => BookCopy.fromJson(c as Map<String, dynamic>))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      return [];
+    }
   }
 
   static Future<ApiResponse> updateBookImage({
@@ -232,8 +254,16 @@ class BookService {
     });
   }
 
-  static Future<ApiResponse> returnBook({required int transactionId}) async {
-    return _post('borrow/return_book.php', {'transaction_id': transactionId});
+  static Future<ApiResponse> returnBook({
+    required int transactionId,
+    double? damageFine,
+    String? bookCondition,
+  }) async {
+    return _post('borrow/return_book.php', {
+      'transaction_id': transactionId,
+      if (damageFine != null) 'damage_fine': damageFine,
+      if (bookCondition != null) 'book_condition': bookCondition,
+    });
   }
 
   static Future<ApiResponse> requestReturn({required int transactionId}) async {
@@ -259,6 +289,16 @@ class BookService {
     return _post('books/cancel_reservation.php', {
       'reservation_id': reservationId,
       'user_email': userEmail,
+    });
+  }
+
+  static Future<ApiResponse> cancelBorrowRequest(
+    String email,
+    int transactionId,
+  ) async {
+    return _post('borrow/cancel_request.php', {
+      'email': email,
+      'transaction_id': transactionId,
     });
   }
 
@@ -320,7 +360,7 @@ class BookService {
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
         final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
         if (decoded['success'] == true && decoded['transactions'] is List) {
-          // Transform pic_path to full URLs
+          // Transform pic_path and cover to full URLs
           return (decoded['transactions'] as List).map((t) {
             final transaction = Map<String, dynamic>.from(
               t as Map<String, dynamic>,
@@ -330,7 +370,46 @@ class BookService {
                 transaction['pic_path'] as String?,
               );
             }
+            if (transaction['cover'] != null) {
+              transaction['cover'] = _absolutePath(
+                transaction['cover'] as String?,
+              );
+            }
             return transaction;
+          }).toList();
+        }
+      }
+    } catch (e) {
+      // Handle error
+    }
+    return [];
+  }
+
+  static Future<List<Map<String, dynamic>>> getUserReservations(
+    String email,
+  ) async {
+    final uri = Uri.parse('$_baseUrl/books/get_user_reservations.php');
+    try {
+      final resp = await http.post(
+        uri,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      );
+
+      if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        final decoded = jsonDecode(resp.body) as Map<String, dynamic>;
+        if (decoded['success'] == true && decoded['reservations'] is List) {
+          // Transform cover to full URLs
+          return (decoded['reservations'] as List).map((r) {
+            final reservation = Map<String, dynamic>.from(
+              r as Map<String, dynamic>,
+            );
+            if (reservation['cover'] != null) {
+              reservation['cover'] = _absolutePath(
+                reservation['cover'] as String?,
+              );
+            }
+            return reservation;
           }).toList();
         }
       }
@@ -361,6 +440,91 @@ class BookService {
       // Handle error
     }
     return [];
+  }
+
+  static Future<int> getNotificationCount(String email) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$_baseUrl/auth/get_notifications.php?email=$email&limit=1'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          if (data['total_count'] is int) return data['total_count'] as int;
+          if (data['count'] is int) return data['count'] as int;
+          if (data['notifications'] is List) {
+            return (data['notifications'] as List).length;
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore and fall through to 0
+    }
+    return 0;
+  }
+
+  static Future<bool> markNotificationAsRead(int notificationId, String userEmail) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/mark_notification_read.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'notification_id': notificationId,
+          'user_email': userEmail,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+    } catch (e) {
+      // Handle error
+    }
+    return false;
+  }
+
+  static Future<bool> markAllNotificationsAsRead(String userEmail) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/mark_notification_read.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_email': userEmail,
+          'mark_all': true,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+    } catch (e) {
+      // Handle error
+    }
+    return false;
+  }
+
+  static Future<bool> deleteNotification(int notificationId, String userEmail) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_baseUrl/auth/delete_notification.php'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'notification_id': notificationId,
+          'user_email': userEmail,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data['success'] == true;
+      }
+    } catch (e) {
+      // Handle error
+    }
+    return false;
   }
 
   static Future<List<dynamic>?> getAdditionRequestDetails(int requestId) async {
@@ -567,7 +731,8 @@ class BookPayload {
   final String author;
   final String isbn;
   final String? category;
-  final String? courseId;
+  final String? courseId; // Keep for backward compatibility
+  final List<String>? courseIds; // New field for multi-course support
   final String? publisher;
   final String? publicationYear;
   final String? edition;
@@ -580,7 +745,7 @@ class BookPayload {
   final String? description;
   final String? conditionNote;
   final List<String>? copyIds;
-  final List<Map<String, int>>? copyLocations;
+  final List<Map<String, dynamic>>? copyLocations;
 
   BookPayload({
     required this.title,
@@ -588,6 +753,7 @@ class BookPayload {
     required this.isbn,
     this.category,
     this.courseId,
+    this.courseIds,
     this.publisher,
     this.publicationYear,
     this.edition,
@@ -609,7 +775,9 @@ class BookPayload {
       'author': author,
       'isbn': isbn,
       if (category != null) 'category': category,
-      if (courseId != null) 'course_id': courseId,
+      // Send courseIds if available, otherwise fall back to single courseId
+      if (courseIds != null && courseIds!.isNotEmpty) 'course_ids': courseIds,
+      if (courseId != null && (courseIds == null || courseIds!.isEmpty)) 'course_id': courseId,
       if (publisher != null) 'publisher': publisher,
       if (publicationYear != null) 'publication_year': publicationYear,
       if (edition != null) 'edition': edition,
@@ -667,4 +835,39 @@ class ApiResponse {
     required this.message,
     required this.data,
   });
+}
+
+class BookCopy {
+  final String copyId;
+  final String isbn;
+  final String? shelfId;
+  final String? compartmentNo;
+  final String? subcompartmentNo;
+  final String status;
+  final String? conditionNote;
+  final String? createdAt;
+
+  BookCopy({
+    required this.copyId,
+    required this.isbn,
+    this.shelfId,
+    this.compartmentNo,
+    this.subcompartmentNo,
+    required this.status,
+    this.conditionNote,
+    this.createdAt,
+  });
+
+  factory BookCopy.fromJson(Map<String, dynamic> json) {
+    return BookCopy(
+      copyId: json['copy_id'] as String,
+      isbn: json['isbn'] as String,
+      shelfId: json['shelf_id'] as String?,
+      compartmentNo: json['compartment_no'] as String?,
+      subcompartmentNo: json['subcompartment_no'] as String?,
+      status: json['status'] as String? ?? 'Available',
+      conditionNote: json['condition_note'] as String?,
+      createdAt: json['created_at'] as String?,
+    );
+  }
 }

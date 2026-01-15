@@ -23,6 +23,7 @@ import 'librarian_addition_request_details.dart';
 import 'general_notices.dart';
 import 'auth_service.dart';
 import 'director_dashboard.dart';
+import 'widgets/notification_bell.dart';
 import 'forgot_password.dart';
 import 'add_shelf.dart';
 import 'remove_shelf.dart';
@@ -187,6 +188,13 @@ class _IITShelfAppState extends State<IITShelfApp> {
             pdfUrl: args?['pdfUrl'],
             isbn: args?['isbn'],
             courseId: args?['courseId'],
+            publisher: args?['publisher'],
+            year: args?['year'],
+            edition: args?['edition'],
+            category: args?['category'],
+            totalCopies: args?['totalCopies'] ?? 0,
+            availableCopies: args?['availableCopies'],
+            pages: args?['pages'],
           );
         },
         '/return-details': (context) {
@@ -283,13 +291,8 @@ class _IITShelfHomeState extends State<IITShelfHome> {
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, '/general-notices');
-            },
-          ),
+        actions: const [
+          NotificationBell(iconColor: Colors.white),
         ],
       ),
       body: Center(

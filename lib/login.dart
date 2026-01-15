@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'auth_service.dart';
+import 'widgets/notification_bell.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -55,13 +56,8 @@ class _LoginPageState extends State<LoginPage> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {
-              Navigator.pushNamed(context, '/general-notices');
-            },
-          ),
+        actions: const [
+          NotificationBell(iconColor: Colors.white),
         ],
       ),
       body: Center(
@@ -195,15 +191,17 @@ class _LoginPageState extends State<LoginPage> {
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: Colors.grey[400],
+                            ? Icons.visibility_off_outlined
+                            : Icons.visibility_outlined,
+                        color: Colors.blue.shade400,
+                        size: 22,
                       ),
                       onPressed: () {
                         setState(() {
                           _obscurePassword = !_obscurePassword;
                         });
                       },
+                      tooltip: _obscurePassword ? 'Show password' : 'Hide password',
                     ),
                   ),
                   onChanged: (_) {

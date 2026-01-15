@@ -34,15 +34,24 @@ function notifyLibrarianReturnRequest($db, $requesterEmail, $bookTitle, $transac
     $stmt->execute();
     $librarians = $stmt->fetchAll(PDO::FETCH_COLUMN);
     
-    $message = "New return request from $requesterEmail for '$bookTitle' (Transaction #$transactionId)";
+    $librarianMessage = "New return request from $requesterEmail for '$bookTitle' (Transaction #$transactionId)";
+    $userMessage = "Return request for '$bookTitle' (Transaction #$transactionId) is pending librarian approval";
     
+    // Notify librarians
     foreach ($librarians as $librarianEmail) {
         $insertStmt = $db->prepare("
             INSERT INTO Notifications (user_email, message, type)
             VALUES (?, ?, 'ReturnRequestPending')
         ");
-        $insertStmt->execute([$librarianEmail, $message]);
+        $insertStmt->execute([$librarianEmail, $librarianMessage]);
     }
+    
+    // Notify user
+    $userInsertStmt = $db->prepare("
+        INSERT INTO Notifications (user_email, message, type)
+        VALUES (?, ?, 'ReturnRequestPending')
+    ");
+    $userInsertStmt->execute([$requesterEmail, $userMessage]);
     
     return true;
 }

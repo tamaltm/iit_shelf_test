@@ -1,4 +1,14 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 include_once '../../config/database.php';
 include_once '../lib/enhanced_notification_helpers.php';
 
@@ -16,18 +26,6 @@ if (empty($transactionId) || empty($userEmail)) {
 }
 
 try {
-  // Ensure supporting table exists
-  $db->exec("CREATE TABLE IF NOT EXISTS Return_Requests (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    transaction_id INT NOT NULL,
-    requester_email VARCHAR(150) NOT NULL,
-    requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('Pending','Processed','Rejected') DEFAULT 'Pending',
-    processed_at DATETIME,
-    INDEX idx_rr_transaction (transaction_id),
-    INDEX idx_rr_status (status)
-  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;");
-
   // Validate transaction exists and belongs to user and is borrowed
   $stmt = $db->prepare("SELECT at.transaction_id
     FROM Approved_Transactions at
@@ -41,18 +39,8 @@ try {
     exit;
   }
 
-  // Prevent duplicate pending requests
-  $check = $db->prepare('SELECT id FROM Return_Requests WHERE transaction_id = :tid AND status = "Pending"');
-  $check->execute([':tid'=>$transactionId]);
-  if ($check->fetch(PDO::FETCH_ASSOC)) {
-    http_response_code(400);
-    echo json_encode(['success'=>false,'message'=>'A pending return request already exists']);
-    exit;
-  }
-
-  // Insert new request
-  $ins = $db->prepare('INSERT INTO Return_Requests (transaction_id, requester_email) VALUES (:tid, :email)');
-  $ins->execute([':tid'=>$transactionId, ':email'=>$userEmail]);
+  // No persistent Return_Requests table usage — rely on notifications only.
+  // We simply notify librarians and let them process via the Requests UI.
   
   // Get book title for notification
   $bookStmt = $db->prepare("
@@ -69,7 +57,7 @@ try {
   // Notify librarians about new return request
   notifyLibrarianReturnRequest($db, $userEmail, $bookTitle, $transactionId);
 
-  echo json_encode(['success'=>true,'message'=>'Return request submitted. Waiting for librarian approval.', 'request_id'=>$db->lastInsertId()]);
+  echo json_encode(['success'=>true,'message'=>'Return request submitted. Waiting for librarian approval.']);
 } catch (Exception $e) {
   http_response_code(500);
   echo json_encode(['success'=>false,'message'=>'Error submitting return request: '.$e->getMessage()]);

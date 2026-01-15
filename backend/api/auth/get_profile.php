@@ -6,6 +6,19 @@
 
 require_once '../../config/database.php';
 
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header('Access-Control-Allow-Origin: ' . $origin);
+header('Access-Control-Allow-Credentials: true');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Access-Control-Allow-Methods: POST, OPTIONS');
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 $database = new Database();
 $db = $database->getConnection();
 
@@ -44,7 +57,8 @@ if (!$user) {
 $profileImageUrl = null;
 if (!empty($user['profile_image'])) {
     // Image is stored as "uploads/profiles/filename.jpg"
-    $profileImageUrl = 'http://localhost:8000/auth/get_image.php?path=' . urlencode($user['profile_image']);
+    // Use /api path so Vite proxy handles CORS
+    $profileImageUrl = '/api/auth/get_image.php?path=' . urlencode($user['profile_image']);
 }
 
 // Role-specific data: add designation for teachers, roll/session for students

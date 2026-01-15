@@ -1,19 +1,46 @@
 <?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
 include_once '../../config/database.php';
 
 $database = new Database();
 $db = $database->getConnection();
 
+// Debug: Log incoming request
+error_log('ADD BOOK REQUEST - Content-Type: ' . $contentType . ' - Data: ' . json_encode($_POST) . ' - Files: ' . json_encode(array_keys($_FILES ?? [])));
+
 // Handle both JSON and multipart/form-data
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 $picPath = null;
 $courseId = null;
+$pdfUrl = null;
 
 if (stripos($contentType, 'application/json') === 0) {
     $data = json_decode(file_get_contents('php://input')) ?: new stdClass();
 } else {
     // Multipart form data (file upload)
     $data = (object)$_POST;
+
+    // Parse JSON fields that were sent as strings
+    if (isset($_POST['copy_ids']) && is_string($_POST['copy_ids'])) {
+        $decoded = json_decode($_POST['copy_ids'], true);
+        $data->copy_ids = $decoded ?? $_POST['copy_ids'];
+    }
+    if (isset($_POST['copy_locations']) && is_string($_POST['copy_locations'])) {
+        $decoded = json_decode($_POST['copy_locations'], true);
+        $data->copy_locations = $decoded ?? $_POST['copy_locations'];
+    }
+    if (isset($_POST['pdf_url'])) {
+        $data->pdf_url = $_POST['pdf_url'];
+    }
 
     // Handle file upload
     if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
@@ -39,9 +66,40 @@ if (stripos($contentType, 'application/json') === 0) {
     }
 }
 
-// Normalize optional course id (used to link books to courses)
+// Normalize optional course ids (used to link books to courses)
+// Support both single course_id and array of course_ids
+$courseIds = [];
 if (!empty($data->course_id)) {
-    $courseId = trim($data->course_id);
+    if (is_array($data->course_id)) {
+        // Array of course_ids
+        foreach ($data->course_id as $cid) {
+            $trimmed = trim($cid);
+            if ($trimmed !== '' && $trimmed !== 'NONE') {
+                $courseIds[] = $trimmed;
+            }
+        }
+    } else {
+        // Single course_id (backward compatibility)
+        $trimmed = trim($data->course_id);
+        if ($trimmed !== '' && $trimmed !== 'NONE') {
+            $courseIds[] = $trimmed;
+        }
+    }
+}
+// Support explicit course_ids array parameter
+if (!empty($data->course_ids) && is_array($data->course_ids)) {
+    foreach ($data->course_ids as $cid) {
+        $trimmed = trim($cid);
+        if ($trimmed !== '' && $trimmed !== 'NONE') {
+            $courseIds[] = $trimmed;
+        }
+    }
+}
+$courseIds = array_values(array_unique($courseIds)); // Remove duplicates
+
+// Normalize pdf url if provided
+if (!empty($data->pdf_url)) {
+    $pdfUrl = trim($data->pdf_url);
 }
 
 // Required fields
@@ -129,40 +187,59 @@ try {
         :description, :pic_path
     )');
 
-    $stmt->execute([
-        ':isbn' => $data->isbn,
-        ':title' => $data->title,
-        ':author' => $data->author,
-        ':category' => $data->category ?? null,
-        ':publisher' => $data->publisher ?? null,
-        ':publication_year' => $data->publication_year ?? null,
-        ':edition' => $data->edition ?? null,
-        ':description' => $data->description ?? null,
-        ':pic_path' => $picPath ?? $data->pic_path ?? null,
-    ]);
-
-    // Link book to course if provided
-    if (!empty($courseId)) {
-        // Ensure course exists
-        $courseCheck = $db->prepare('SELECT course_id FROM Courses WHERE course_id = :course_id');
-        $courseCheck->execute([':course_id' => $courseId]);
-
-        if ($courseCheck->fetchColumn() === false) {
+    try {
+        $stmt->execute([
+            ':isbn' => $data->isbn,
+            ':title' => $data->title,
+            ':author' => $data->author,
+            ':category' => $data->category ?? null,
+            ':publisher' => $data->publisher ?? null,
+            ':publication_year' => $data->publication_year ?? null,
+            ':edition' => $data->edition ?? null,
+            ':description' => $data->description ?? null,
+            ':pic_path' => $picPath ?? $data->pic_path ?? null,
+        ]);
+    } catch (PDOException $e) {
+        if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
             $db->rollBack();
             http_response_code(400);
             echo json_encode([
                 'success' => false,
-                'message' => 'Course not found for course_id: ' . $courseId,
+                'message' => 'A book with ISBN ' . $data->isbn . ' already exists. Please use a different ISBN.',
             ]);
             exit;
         }
+        throw $e;
+    }
 
+    // Link book to courses if provided
+    if (!empty($courseIds)) {
+        // Verify all courses exist
+        foreach ($courseIds as $courseId) {
+            $courseCheck = $db->prepare('SELECT course_id FROM Courses WHERE course_id = :course_id');
+            $courseCheck->execute([':course_id' => $courseId]);
+
+            if ($courseCheck->fetchColumn() === false) {
+                $db->rollBack();
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Course not found for course_id: ' . $courseId,
+                ]);
+                exit;
+            }
+        }
+
+        // Insert all course associations
         $linkStmt = $db->prepare('INSERT INTO Book_Courses (isbn, course_id) VALUES (:isbn, :course_id)
             ON DUPLICATE KEY UPDATE course_id = VALUES(course_id)');
-        $linkStmt->execute([
-            ':isbn' => $data->isbn,
-            ':course_id' => $courseId,
-        ]);
+        
+        foreach ($courseIds as $courseId) {
+            $linkStmt->execute([
+                ':isbn' => $data->isbn,
+                ':course_id' => $courseId,
+            ]);
+        }
     }
 
     // Generate copies in Book_Copies
@@ -217,6 +294,17 @@ try {
         }
     }
 
+    // If a PDF URL was provided, upsert into Digital_Resources as PDF
+    if (!empty($pdfUrl)) {
+        $pdfStmt = $db->prepare('INSERT INTO Digital_Resources (isbn, resource_type, file_path)
+            VALUES (:isbn, "PDF", :file_path)
+            ON DUPLICATE KEY UPDATE file_path = VALUES(file_path)');
+        $pdfStmt->execute([
+            ':isbn' => $data->isbn,
+            ':file_path' => $pdfUrl,
+        ]);
+    }
+
     $db->commit();
 
     http_response_code(201);
@@ -225,10 +313,11 @@ try {
         'message' => 'Book added successfully',
         'isbn' => $data->isbn,
         'copies_created' => $copiesTotal,
-        'course_id' => $courseId,
+        'course_ids' => $courseIds, // Return array of linked course IDs
     ]);
 } catch (Exception $e) {
     $db->rollBack();
+    error_log('ADD BOOK ERROR: ' . $e->getMessage() . ' | ' . $e->getTraceAsString());
     http_response_code(500);
     echo json_encode([
         'success' => false,

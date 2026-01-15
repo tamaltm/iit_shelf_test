@@ -300,6 +300,8 @@ class _LibraryPageState extends State<LibraryPage> {
     final bool isAlreadyBorrowed = _borrowedBookIsbns.contains(book.isbn);
     final bool hasPhysicalCopies = book.quantity > 0;
     final bool hasPdf = (book.pdfUrl ?? '').isNotEmpty;
+    final bool isLibrarian = (widget.userRole?.toLowerCase() ?? AuthService.getCurrentUserRole()?.toLowerCase()) == 'librarian';
+    
     final statusColor = (!hasPhysicalCopies && hasPdf)
         ? Colors.blue
         : (isAlreadyBorrowed
@@ -316,7 +318,12 @@ class _LibraryPageState extends State<LibraryPage> {
     late Color buttonColor;
     late bool isButtonEnabled;
 
-    if (!hasPhysicalCopies && hasPdf) {
+    if (isLibrarian) {
+      // Librarians cannot borrow or reserve
+      buttonText = 'View Details';
+      buttonColor = Colors.grey;
+      isButtonEnabled = true;
+    } else if (!hasPhysicalCopies && hasPdf) {
       // Digital-only book - show Download PDF
       buttonText = 'Download PDF';
       buttonColor = Colors.blue;
@@ -450,6 +457,9 @@ class _LibraryPageState extends State<LibraryPage> {
                                     publisher: book.publisher,
                                     courseId: book.courseId,
                                     totalCopies: book.quantity,
+                                    availableCopies: book.availableQuantity,
+                                    edition: book.edition,
+                                    category: book.category,
                                   ),
                                 ),
                               ).then(
@@ -481,53 +491,58 @@ class _LibraryPageState extends State<LibraryPage> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 44,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => BookDetailPage(
-                            bookId: book.id,
-                            image: book.coverImage ?? '',
-                            title: book.title,
-                            author: book.author,
-                            description:
-                                book.description ?? 'No description available',
-                            available: isAvailable,
-                            pdfAvailable: (book.pdfUrl ?? '').isNotEmpty,
-                            pdfUrl: book.pdfUrl,
-                            isbn: book.isbn,
-                            pages: book.pages,
-                            year: book.publicationYear,
-                            publisher: book.publisher,
-                            courseId: book.courseId,
-                            totalCopies: book.quantity,
+                // Hide redundant Details button for librarians
+                if (!isLibrarian)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BookDetailPage(
+                              bookId: book.id,
+                              image: book.coverImage ?? '',
+                              title: book.title,
+                              author: book.author,
+                              description:
+                                  book.description ?? 'No description available',
+                              available: isAvailable,
+                              pdfAvailable: (book.pdfUrl ?? '').isNotEmpty,
+                              pdfUrl: book.pdfUrl,
+                              isbn: book.isbn,
+                              pages: book.pages,
+                              year: book.publicationYear,
+                              publisher: book.publisher,
+                              courseId: book.courseId,
+                              totalCopies: book.quantity,
+                              availableCopies: book.availableQuantity,
+                              edition: book.edition,
+                              category: book.category,
+                            ),
                           ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Theme.of(
+                          context,
+                        ).scaffoldBackgroundColor,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(
-                        context,
-                      ).scaffoldBackgroundColor,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
                       ),
-                    ),
-                    child: const Text(
-                      'Details',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
+                      child: const Text(
+                        'Details',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                        ),
                       ),
                     ),
                   ),
-                ),
               ],
             ),
           ),

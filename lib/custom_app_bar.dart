@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'auth_service.dart';
 import 'book_image.dart';
 import 'theme_service.dart';
+import 'widgets/notification_bell.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String? userName;
@@ -157,11 +158,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             Navigator.pushNamed(context, '/library', arguments: {'userRole': userRole});
           },
         ),
-        IconButton(
-          icon: Icon(Icons.notifications_outlined, color: themeService.textColor),
-          onPressed: () {
-            Navigator.pushNamed(context, '/notifications', arguments: {'userRole': userRole});
-          },
+        NotificationBell(
+          iconColor: themeService.textColor,
+          userRole: userRole,
         ),
         IconButton(
           icon: Icon(Icons.logout_outlined, color: themeService.textColor),
